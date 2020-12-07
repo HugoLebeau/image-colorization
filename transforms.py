@@ -7,13 +7,13 @@ def rgb2lab(img_rgb):
 
     Parameters
     ----------
-    img_rgb : torch.tensor
-        (..., 3, H, W) RGB image(s).
+    img_rgb : torch.tensor, shape (..., 3, H, W)
+        RGB image(s).
 
     Returns
     -------
-    torch.tensor
-        (..., 3, H, W) image(s) in the L*a*b* color space.
+    torch.tensor, shape (..., 3, H, W)
+        Image(s) in the L*a*b* color space.
 
     '''
     img = img_rgb.detach().clone()
@@ -41,13 +41,13 @@ def lab2rgb(img_lab):
 
     Parameters
     ----------
-    img_lab : torch.tensor
-        (..., 3, H, W) L*a*b* image(s).
+    img_lab : torch.tensor, shape (..., 3, H, W)
+        L*a*b* image(s).
 
     Returns
     -------
-    img_rgb : torch.tensor
-        (..., 3, H, W) image(s) in RGB.
+    img_rgb : torch.tensor, shape (..., 3, H, W)
+        Image(s) in RGB.
 
     '''
     img = img_lab.detach().clone()
@@ -78,13 +78,13 @@ def rgb2l(img_rgb):
 
     Parameters
     ----------
-    img_rgb : torch.tensor
-        (..., 3, H, W) RGB image(s).
+    img_rgb : torch.tensor, shape (..., 3, H, W)
+        RGB image(s).
 
     Returns
     -------
-    torch.tensor
-        (..., 1, H, W) lightness (L*) image(s).
+    torch.tensor, shape (..., 1, H, W)
+        Lightness (L*) image(s).
 
     '''
     img = img_rgb.detach().clone()
@@ -102,5 +102,21 @@ def rgb2l(img_rgb):
     return L.unsqueeze(dim=-3)
 
 def data_transform(img_pil):
+    '''
+    Convert a PIL image to its torch.tensor L* and L*a*b* representation.
+
+    Parameters
+    ----------
+    img_pil : PIL image
+        Image to be converted.
+
+    Returns
+    -------
+    torch.tensor
+        L* representation.
+    torch.tensor
+        L*a*b* representation.
+
+    '''
     img = transforms.ToTensor()(img_pil.convert('RGB'))
     return (rgb2l(img), rgb2lab(img))
