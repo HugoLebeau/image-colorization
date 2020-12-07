@@ -3,7 +3,7 @@ from PIL import Image
 from torch import utils
 
 class Places205(utils.data.Dataset):
-    def __init__(self, path, transform):
+    def __init__(self, path, transform=None):
         super(Places205, self).__init__()
         self.path = path
         self.transform = transform
@@ -16,4 +16,7 @@ class Places205(utils.data.Dataset):
         return self.length
     
     def __getitem__(self, index):
-        return self.transform(Image.open(self.list_files[index]))
+        if self.transform is None:
+            return Image.open(self.list_files[index])
+        else:
+            return self.transform(Image.open(self.list_files[index]))
