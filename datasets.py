@@ -1,13 +1,17 @@
 import os
+import pandas as pd
 from PIL import Image
 from torch import utils
 
 class Places205(utils.data.Dataset):
-    def __init__(self, path, transform=None):
+    def __init__(self, path, transform=None, rgb_only=True, directory='directory_Places205.csv'):
         super(Places205, self).__init__()
         self.path = path
         self.transform = transform
-        self.list_files = [root+'/'+file for root, dirs, files in os.walk(path) for file in files]
+        dirmode = pd.read_csv(directory, header=None)
+        if rgb_only:
+            dirmode = dirmode[dirmode[1] == 'RGB']
+        self.directory = dirmode[0].values
         self.length = None
     
     def __len__(self):
