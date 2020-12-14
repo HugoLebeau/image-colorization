@@ -1,4 +1,7 @@
-''' List the modes of each image (RGB, L, ...) of a given dataset in a csv file. '''
+'''
+Create a directory of a given dataset in a csv file.
+The path to the image and its mode (RGB, L, ...) are saved.
+'''
 
 import argparse
 import os
@@ -16,4 +19,4 @@ modes = pd.Series(index=list_images, dtype=object)
 for img in tqdm(modes.index):
     modes[img] = Image.open(img).mode
 
-modes.to_csv('image_modes.csv', header=False)
+modes.to_csv('directory.csv', header=False)
