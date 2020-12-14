@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from PIL import Image
 from torch import utils
@@ -16,11 +15,11 @@ class Places205(utils.data.Dataset):
     
     def __len__(self):
         if self.length is None:
-            self.length = len(self.list_files)
+            self.length = len(self.directory)
         return self.length
     
     def __getitem__(self, index):
         if self.transform is None:
-            return Image.open(self.list_files[index])
+            return Image.open(self.directory[index])
         else:
-            return self.transform(Image.open(self.list_files[index]))
+            return self.transform(Image.open(self.directory[index]))
