@@ -1,7 +1,8 @@
 from torch import nn
+from utils import q # number of in-gamut values
 
 class Zhang16(nn.Module):
-    def __init__(self):
+    def __init__(self, q=q):
         super(Zhang16, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
@@ -64,15 +65,15 @@ class Zhang16(nn.Module):
             )
         self.conv8 = nn.Sequential(
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True),
-            nn.ReLU(True),
+            nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.ReLU(True),
+            nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.ReLU(True),
-            nn.Conv2d(256, 313, kernel_size=1, stride=1, padding=0, bias=True)
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
             )
         self.softmax = nn.Softmax(dim=1)
-        self.conv9 = nn.Conv2d(313, 2, kernel_size=1, padding=0, dilation=1, stride=1, bias=False)
+        self.conv_z2ab = nn.Conv2d(q, 2, kernel_size=1, padding=0, dilation=1, stride=1, bias=False)
         self.upsample = nn.Upsample(scale_factor=4, mode='bilinear')
     
     def forward(self, img_l):
@@ -84,7 +85,11 @@ class Zhang16(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         x = self.conv7(x)
-        x = self.softmax(self.conv8(x))
-        x = self.upsample(self.conv9(x))
-        x *= 110. # unnormalize a*b* output
-        return x
+        z = self.softmax(self.conv8(x)) # a*b* probability distribution
+        return z
+    
+    def z2ab(self, z):
+        ''' Transform a color distribution into an a*b* output. '''
+        img_ab = self.upsample(self.conv_z2ab(z))
+        img_ab *= 110. # unnormalize a*b* output
+        return img_ab
