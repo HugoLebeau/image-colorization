@@ -5,7 +5,7 @@ from datetime import datetime
 from torch import optim
 from tqdm import tqdm
 
-from datasets import Places205
+from datasets.datasets import Places205
 from models import Zhang16
 from transforms import data_transform
 
@@ -24,7 +24,7 @@ parser.add_argument('--seed', type=int, default=1, metavar="SEED",
                     help="Random seed (default: 1).")
 args = parser.parse_args()
 
-def load_dataset(dataset_name):
+def load_dataset(dataset_name, transform=data_transform):
     '''
     Load a dataset and perform a train/val split.
 
@@ -51,7 +51,7 @@ def load_dataset(dataset_name):
 
     '''
     if dataset_name == "Places205":
-        dataset = Places205('Places205/', transform=data_transform)
+        dataset = Places205('datasets/', transform=transform, maxsize=100)
     else:
         raise NameError(dataset_name)
     dataset_size = len(dataset)
@@ -113,7 +113,7 @@ def training(model_name, train_loader, val_loader, use_cuda=False):
             return lr
         optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
-        criterion = ?
+        criterion = 1
     else:
         raise NameError(model_name)
     
