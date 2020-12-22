@@ -9,7 +9,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
-parser = argparse.ArgumentParser(description="Automatic image colorization")
+parser = argparse.ArgumentParser()
 parser.add_argument('--path', type=str, metavar="PATH", help="Path to the dataset.")
 args = parser.parse_args()
 
