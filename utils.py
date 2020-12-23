@@ -1,8 +1,8 @@
 import torch
 import pandas as pd
 
-visible_ab = torch.tensor(pd.read_csv('cielab/in_visible_gamut.csv', header=None).values)
-q = visible_ab.shape[0]
+visible_ab = torch.tensor(pd.read_csv('cielab/in_visible_gamut.csv', header=None).values) # quantized visible a*b* space
+q = visible_ab.shape[0] # number of points in the quantized visible a*b* space
 
 def ab2z(img_ab, k=5, sigma=5.):
     '''
