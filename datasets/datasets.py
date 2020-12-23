@@ -3,16 +3,15 @@ from PIL import Image
 from torch import utils
 
 class Places205(utils.data.Dataset):
-    def __init__(self, path, transform, rgb_only=True, directory='directory_Places205.csv',
-                 maxsize=None):
+    def __init__(self, path, transform, rgb_only=True, directory='directory_Places205.csv', maxsize=None):
         super(Places205, self).__init__()
         self.path = path
         self.transform = transform
         dirmode = pd.read_csv(self.path+directory, header=None)
-        if maxsize: # remove for final version
-            dirmode = dirmode[:maxsize]
         if rgb_only:
             dirmode = dirmode[dirmode[1] == 'RGB']
+        if maxsize:
+            dirmode = dirmode[:maxsize]
         self.directory = dirmode[0].values
         self.length = None
     
