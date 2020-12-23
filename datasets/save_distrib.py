@@ -2,12 +2,6 @@
 Save the a*b* distribution of a given dataset in a csv file.
 '''
 
-# Allow import from parent directory
-import sys, os, inspect
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.realpath(os.path.dirname(inspect.getfile(inspect.currentframe())))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
 import argparse
 import torch
 import numpy as np
@@ -16,7 +10,7 @@ from torchvision import transforms
 from tqdm import tqdm
 from scipy.spatial.distance import cdist
 
-from datasets import Places205
+from datasets.datasets import Places205
 from transforms import rgb2ab
 
 parser = argparse.ArgumentParser()
@@ -24,7 +18,7 @@ parser.add_argument('--dataset', type=str, metavar="DATASET", help="Name of the 
 parser.add_argument('--batch-size', type=int, default=4, metavar="BATCHSIZE", help="Batch size (default: 4).")
 args = parser.parse_args()
 
-visible_ab = pd.read_csv('../cielab/in_visible_gamut.csv', header=None).values # quantized visible a*b* space
+visible_ab = pd.read_csv('cielab/in_visible_gamut.csv', header=None).values # quantized visible a*b* space
 q = visible_ab.shape[0] # number of points in the quantized a*b* space
 distrib = np.zeros(q, dtype=int)
 
