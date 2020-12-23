@@ -2,6 +2,12 @@
 Save the a*b* distribution of a given dataset in a csv file.
 '''
 
+# Allow import from parent directory
+import sys, os, inspect
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.realpath(os.path.dirname(inspect.getfile(inspect.currentframe())))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
 import argparse
 import torch
 import numpy as np
