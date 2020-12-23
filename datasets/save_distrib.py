@@ -10,7 +10,7 @@ from torchvision import transforms
 from tqdm import tqdm
 from scipy.spatial.distance import cdist
 
-from datasets.datasets import Places205
+from datasets import Places205
 from transforms import rgb2ab
 
 parser = argparse.ArgumentParser()
