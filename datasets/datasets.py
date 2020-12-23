@@ -3,7 +3,7 @@ from PIL import Image
 from torch import utils
 
 class Places205(utils.data.Dataset):
-    def __init__(self, path, transform=None, rgb_only=True, directory='directory_Places205.csv',
+    def __init__(self, path, transform, rgb_only=True, directory='directory_Places205.csv',
                  maxsize=None):
         super(Places205, self).__init__()
         self.path = path
@@ -22,7 +22,4 @@ class Places205(utils.data.Dataset):
         return self.length
     
     def __getitem__(self, index):
-        if self.transform is None:
-            return Image.open(self.directory[index])
-        else:
-            return self.transform(Image.open(self.path+self.directory[index]))
+        return self.transform(Image.open(self.path+self.directory[index]))
