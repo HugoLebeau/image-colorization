@@ -101,6 +101,39 @@ def rgb2l(img_rgb):
     L = 116.*Y-16.
     return L.unsqueeze(dim=-3)
 
+def rgb2ab(img_rgb):
+    '''
+    RGB to a*b* conversion.
+
+    Parameters
+    ----------
+    img_rgb : torch.tensor, shape (..., 3, H, W)
+        RGB image(s).
+
+    Returns
+    -------
+    torch.tensor, shape (..., 2, H, W)
+        Image(s) in the a*b* color space.
+
+    '''
+    img = img_rgb.detach().clone()
+    # RGB > XYZ
+    mask = img > 0.04045
+    img[mask] = ((img[mask]+0.055)/1.055)**2.4
+    img[~mask] /= 12.92
+    X = img[..., 0, :, :]*0.412453+img[..., 1, :, :]*0.357580+img[..., 2, :, :]*0.180423
+    Y = img[..., 0, :, :]*0.212671+img[..., 1, :, :]*0.715160+img[..., 2, :, :]*0.072169
+    Z = img[..., 0, :, :]*0.019334+img[..., 1, :, :]*0.119193+img[..., 2, :, :]*0.950227
+    # XYZ > L*a*b*
+    X, Y, Z = X/0.95047, Y/1.00000, Z/1.08883 # CIE Standard Illuminant D65, 2° observer
+    img_xyz = torch.stack([X, Y, Z], dim=-3)
+    mask = img_xyz > 0.008856
+    img_xyz[mask] = img_xyz[mask]**(1./3.)
+    img_xyz[~mask] = 7.787*img_xyz[~mask]+16./116.
+    a = 500.*(img_xyz[..., 0, :, :]-img_xyz[..., 1, :, :])
+    b = 200.*(img_xyz[..., 1, :, :]-img_xyz[..., 2, :, :])
+    return torch.stack([a, b], dim=-3)
+
 def data_transform(img_pil):
     '''
     Convert a PIL image to its torch.tensor L* and L*a*b* representation.
