@@ -31,7 +31,7 @@ distrib = np.zeros(q, dtype=int)
 # Load dataset
 transform = lambda img: rgb2ab(transforms.ToTensor()(img))
 if args.dataset == "Places205":
-    dataset = Places205('./', transform=transform)
+    dataset = Places205('datasets/', transform=transform)
 else:
     raise NameError(args.dataset)
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
