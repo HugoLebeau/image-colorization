@@ -24,7 +24,7 @@ parser.add_argument('--seed', type=int, default=1, metavar="SEED",
                     help="Random seed (default: 1).")
 args = parser.parse_args()
 
-def load_dataset(dataset_name, transform=data_transform):
+def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_transform):
     '''
     Load a dataset and perform a train/val split.
 
@@ -32,6 +32,14 @@ def load_dataset(dataset_name, transform=data_transform):
     ----------
     dataset_name : str
         Name of the dataset.
+    val_part : float
+        Portion of the dataset kept for validation.
+    batch_size : int
+        Training batch size.
+    n_threads : int
+        How many subprocesses to use for data loading.
+    transform : callable, optional
+        Transformation applied to the data. The default is None.
 
     Raises
     ------
@@ -55,13 +63,11 @@ def load_dataset(dataset_name, transform=data_transform):
     else:
         raise NameError(dataset_name)
     dataset_size = len(dataset)
-    val_size = int(args.val_part*dataset_size)
+    val_size = int(val_part*dataset_size)
     train_size = dataset_size-val_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
-                                               shuffle=True, num_workers=args.n_threads)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size,
-                                             shuffle=True, num_workers=args.n_threads)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=n_threads)
     return train_size, val_size, train_loader, val_loader
 
 def training(model_name, train_loader, val_loader, use_cuda=False):
@@ -166,8 +172,8 @@ def save(model, training_loss, validation_loss):
 
     '''
     now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    torch.save(model.state_dict(), args.model+'_'+now+'.pth')
-    file = open(args.model+'_'+now+'.csv', 'w')
+    torch.save(model.state_dict(), model+'_'+now+'.pth')
+    file = open(model+'_'+now+'.csv', 'w')
     file.write("Epoch,Training loss,Validation loss\n")
     n_epochs = len(training_loss)
     for i in range(n_epochs):
@@ -179,6 +185,6 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    train_size, val_size, train_loader, val_loader = load_dataset(args.dataset)
+    train_size, val_size, train_loader, val_loader = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
     model, training_loss, validation_loss = training(args.model, train_loader, val_loader, use_cuda)
     save(model, training_loss, validation_loss)
