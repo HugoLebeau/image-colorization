@@ -1,6 +1,13 @@
 import torch
 from torchvision import transforms
 
+mat_rgb2lab = torch.tensor([[0.412453, 0.357580, 0.180423],
+                            [0.212671, 0.715160, 0.072169],
+                            [0.019334, 0.119193, 0.950227]])
+mat_lab2rgb = torch.inverse(mat_rgb2lab)
+
+d65_2 = torch.tensor([0.95047, 1.00000, 1.08883]) # CIE Standard Illuminant D65, 2° observer
+
 def rgb2lab(img_rgb):
     '''
     RGB to L*a*b* conversion.
@@ -21,12 +28,10 @@ def rgb2lab(img_rgb):
     mask = img > 0.04045
     img[mask] = ((img[mask]+0.055)/1.055)**2.4
     img[~mask] /= 12.92
-    X = img[..., 0, :, :]*0.412453+img[..., 1, :, :]*0.357580+img[..., 2, :, :]*0.180423
-    Y = img[..., 0, :, :]*0.212671+img[..., 1, :, :]*0.715160+img[..., 2, :, :]*0.072169
-    Z = img[..., 0, :, :]*0.019334+img[..., 1, :, :]*0.119193+img[..., 2, :, :]*0.950227
+    img_xyz = torch.matmul(mat_rgb2lab, img.transpose(-3, -2).transpose(-2, -1).unsqueeze(dim=-1)).squeeze(dim=-1)
     # XYZ > L*a*b*
-    X, Y, Z = X/0.95047, Y/1.00000, Z/1.08883 # CIE Standard Illuminant D65, 2° observer
-    img_xyz = torch.stack([X, Y, Z], dim=-3)
+    img_xyz /= d65_2
+    img_xyz = img_xyz.transpose(-1, -2).transpose(-2, -3)
     mask = img_xyz > 0.008856
     img_xyz[mask] = img_xyz[mask]**(1./3.)
     img_xyz[~mask] = 7.787*img_xyz[~mask]+16./116.
@@ -58,15 +63,10 @@ def lab2rgb(img_lab):
     mask = img_xyz > 0.2068966
     img_xyz[mask] = img_xyz[mask]**3
     img_xyz[~mask] = (img_xyz[~mask]-16./116.)/7.787
-    # CIE Standard Illuminant D65, 2° observer
-    img_xyz[..., 0, :, :] *= 0.95047
-    img_xyz[..., 1, :, :] *= 1.00000
-    img_xyz[..., 2, :, :] *= 1.08883
+    img_xyz = img_xyz.transpose(-3, -2).transpose(-2, -1)
+    img_xyz *= d65_2
     # XYZ > RGB
-    R = img_xyz[..., 0, :, :]*3.240481+img_xyz[..., 1, :, :]*-1.537152+img_xyz[..., 2, :, :]*-0.498536
-    G = img_xyz[..., 0, :, :]*-0.969255+img_xyz[..., 1, :, :]*1.87599+img_xyz[..., 2, :, :]*0.041556
-    B = img_xyz[..., 0, :, :]*0.055647+img_xyz[..., 1, :, :]*-0.204041+img_xyz[..., 2, :, :]*1.057311
-    img_rgb = torch.stack([R, G, B], dim=-3)
+    img_rgb = torch.matmul(mat_lab2rgb, img_xyz.unsqueeze(dim=-1)).squeeze(dim=-1).transpose(-1, -2).transpose(-2, -3)
     mask = img_rgb > 0.0031308
     img_rgb[mask] = 1.055*(img_rgb[mask]**(1./2.4))-0.055
     img_rgb[~mask] *= 12.92
@@ -92,9 +92,9 @@ def rgb2l(img_rgb):
     mask = img > 0.04045
     img[mask] = ((img[mask]+0.055)/1.055)**2.4
     img[~mask] /= 12.92
-    Y = img[..., 0, :, :]*0.212671+img[..., 1, :, :]*0.715160+img[..., 2, :, :]*0.072169
+    Y = torch.matmul(mat_rgb2lab[1], img.transpose(-3, -2).transpose(-2, -1).unsqueeze(dim=-1)).squeeze(dim=-1)
     # Y > L*
-    Y = Y/1.00000 # CIE Standard Illuminant D65, 2° observer
+    Y = Y/d65_2[1]
     mask = Y > 0.008856
     Y[mask] = Y[mask]**(1./3.)
     Y[~mask] = 7.787*Y[~mask]+16./116.
@@ -121,12 +121,10 @@ def rgb2ab(img_rgb):
     mask = img > 0.04045
     img[mask] = ((img[mask]+0.055)/1.055)**2.4
     img[~mask] /= 12.92
-    X = img[..., 0, :, :]*0.412453+img[..., 1, :, :]*0.357580+img[..., 2, :, :]*0.180423
-    Y = img[..., 0, :, :]*0.212671+img[..., 1, :, :]*0.715160+img[..., 2, :, :]*0.072169
-    Z = img[..., 0, :, :]*0.019334+img[..., 1, :, :]*0.119193+img[..., 2, :, :]*0.950227
+    img_xyz = torch.matmul(mat_rgb2lab, img.transpose(-3, -2).transpose(-2, -1).unsqueeze(dim=-1)).squeeze(dim=-1)
     # XYZ > L*a*b*
-    X, Y, Z = X/0.95047, Y/1.00000, Z/1.08883 # CIE Standard Illuminant D65, 2° observer
-    img_xyz = torch.stack([X, Y, Z], dim=-3)
+    img_xyz /= d65_2
+    img_xyz = img_xyz.transpose(-1, -2).transpose(-2, -3)
     mask = img_xyz > 0.008856
     img_xyz[mask] = img_xyz[mask]**(1./3.)
     img_xyz[~mask] = 7.787*img_xyz[~mask]+16./116.
