@@ -16,7 +16,7 @@ from torchvision import transforms
 from tqdm import tqdm
 from scipy.spatial.distance import cdist
 
-from datasets import Places205
+from datasets.datasets import Places205
 from transforms import rgb2ab
 
 parser = argparse.ArgumentParser()
@@ -39,7 +39,7 @@ if args.dataset == "Places205":
     dataset = Places205('datasets/', transform=transform, maxsize=args.max_size)
 else:
     raise NameError(args.dataset)
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
 for batch in tqdm(data_loader):
     for img_ab in batch:
