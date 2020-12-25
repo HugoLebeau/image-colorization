@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+from scipy.spatial.distance import pdist, squareform
 
 visible_ab = torch.tensor(pd.read_csv('cielab/in_visible_gamut.csv', header=None).values) # quantized visible a*b* space
 q = visible_ab.shape[0] # number of points in the quantized visible a*b* space
@@ -19,7 +20,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
         Number of nearest neighbors to each ground truth pixel considered in
         the soft-encording. The default is 5.
     sigma : float, optional
-        Standard deviation of the gaussian kernel used for the soft-encoding.
+        Standard deviation of the Gaussian kernel used for the soft-encoding.
         The default is 5..
     algorithm : str, optional
         Algorithm used to compute the nearest neighbors (ball_tree / kd_tree /
@@ -45,7 +46,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
 
 def z2ab(z, temp=0.38):
     '''
-    Mqp from class probabilities to point estimates in a*b* space with an
+    Map from class probabilities to point estimates in a*b* space with an
     annealed-mean.
 
     Parameters
@@ -69,3 +70,24 @@ def z2ab(z, temp=0.38):
     prod_a = ft_z*visible_ab[:, 0]
     prod_b = ft_z*visible_ab[:, 1]
     return (torch.sum(prod_a, axis=-1), torch.sum(prod_b, axis=-1))
+
+def logdistrib_smoothed(logdistrib, sigma=5.):
+    '''
+    Smooth a distribution given its log with a gaussian kernel.
+
+    Parameters
+    ----------
+    logdistrib : torch.tensor, shape (Q)
+        The log of the distribution.
+    sigma : float, optional
+        Standard deviation of the Gaussian kernel. The default is 5..
+
+    Returns
+    -------
+    torch.tensor, shape (Q)
+        The log of the smoothed distribution.
+
+    '''
+    dmat = torch.tensor(squareform(pdist(visible_ab)))
+    logkernel = -0.5*dmat**2/sigma**2
+    return torch.logsumexp(logdistrib+logkernel, dim=1)-torch.logsumexp(logkernel, dim=1)
