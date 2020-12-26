@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 from torchvision import transforms
 
 mat_rgb2lab = torch.tensor([[0.412453, 0.357580, 0.180423],
@@ -132,22 +133,9 @@ def rgb2ab(img_rgb):
     b = 200.*(img_xyz[..., 1, :, :]-img_xyz[..., 2, :, :])
     return torch.stack([a, b], dim=-3)
 
-def data_transform(img_pil):
-    '''
-    Convert a PIL image to its torch.tensor L* and L*a*b* representation.
-
-    Parameters
-    ----------
-    img_pil : PIL image
-        Image to be converted.
-
-    Returns
-    -------
-    torch.tensor
-        L* representation.
-    torch.tensor
-        L*a*b* representation.
-
-    '''
-    img = transforms.ToTensor()(img_pil.convert('RGB'))
-    return (rgb2l(img), rgb2lab(img))
+data_transform = transforms.Compose(
+    [lambda img_pil: img_pil.convert('RGB'),
+     transforms.Resize((256, 256)),
+     transforms.ToTensor(),
+     rgb2lab,
+     lambda img_lab: (img_lab[0].unsqueeze(dim=0), img_lab[[1, 2]])])
