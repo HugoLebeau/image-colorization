@@ -73,8 +73,6 @@ class Zhang16(nn.Module):
             nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
             )
         self.softmax = nn.Softmax(dim=1)
-        self.conv_z2ab = nn.Conv2d(q, 2, kernel_size=1, padding=0, dilation=1, stride=1, bias=False)
-        self.upsample = nn.Upsample(scale_factor=4, mode='bilinear')
     
     def forward(self, img_l):
         x = (img_l-50.)/100. # normalize L* input
