@@ -14,7 +14,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
 
     Parameters
     ----------
-    img_ab : torch.tensor, shape (C, 2, H, W)
+    img_ab : torch.tensor, shape (N, 2, H, W)
         a* and b* channels of a batch of images.
     k : int, optional
         Number of nearest neighbors to each ground truth pixel considered in
@@ -28,20 +28,20 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
 
     Returns
     -------
-    z : torch.tensor, shape(C, H, W, Q)
+    z : torch.tensor, shape(N, H, W, Q)
         Soft-encoded images.
 
     '''
-    c, _, h, w = img_ab.shape
-    points = img_ab.permute(0, 2, 3, 1).reshape((c*h*w, 2)) # list a*b* points
+    n, _, h, w = img_ab.shape
+    points = img_ab.permute(0, 2, 3, 1).reshape((n*h*w, 2)) # list a*b* points
     nbrs = NearestNeighbors(n_neighbors=k, algorithm=algorithm).fit(visible_ab)
     distances, indices = nbrs.kneighbors(points) # compute (approximate) nearest neighbors
     kernel = torch.exp(-0.5*torch.tensor(distances)**2/sigma**2)
-    soft_encoding = kernel/kernel.sum(dim=1).reshape((c*h*w, 1)) # soft-encoding
-    z = torch.zeros((c*h*w, q), dtype=torch.float64)
-    idx = np.tile(np.arange(c*h*w, dtype=np.int64), (k, 1)).T
+    soft_encoding = kernel/kernel.sum(dim=1).reshape((n*h*w, 1)) # soft-encoding
+    z = torch.zeros((n*h*w, q), dtype=torch.float64)
+    idx = np.tile(np.arange(n*h*w, dtype=np.int64), (k, 1)).T
     z[idx, indices] = soft_encoding
-    z = z.reshape((c, h, w, q))
+    z = z.reshape((n, h, w, q))
     return z
 
 def z2ab(z, temp=0.38):
