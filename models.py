@@ -87,9 +87,3 @@ class Zhang16(nn.Module):
         x = self.conv7(x)
         z = self.softmax(self.conv8(x)) # a*b* probability distribution
         return z
-    
-    def z2ab(self, z):
-        ''' Transform a color distribution into an a*b* output. '''
-        img_ab = self.upsample(self.conv_z2ab(z))
-        img_ab *= 110. # unnormalize a*b* output
-        return img_ab
