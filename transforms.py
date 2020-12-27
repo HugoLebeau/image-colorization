@@ -15,12 +15,12 @@ def rgb2lab(img_rgb):
 
     Parameters
     ----------
-    img_rgb : torch.tensor, shape (..., 3, H, W)
+    img_rgb : torch.Tensor, shape (..., 3, H, W)
         RGB image(s).
 
     Returns
     -------
-    torch.tensor, shape (..., 3, H, W)
+    torch.Tensor, shape (..., 3, H, W)
         Image(s) in the L*a*b* color space.
 
     '''
@@ -47,12 +47,12 @@ def lab2rgb(img_lab):
 
     Parameters
     ----------
-    img_lab : torch.tensor, shape (..., 3, H, W)
+    img_lab : torch.Tensor, shape (..., 3, H, W)
         L*a*b* image(s).
 
     Returns
     -------
-    img_rgb : torch.tensor, shape (..., 3, H, W)
+    img_rgb : torch.Tensor, shape (..., 3, H, W)
         Image(s) in RGB.
 
     '''
@@ -79,12 +79,12 @@ def rgb2l(img_rgb):
 
     Parameters
     ----------
-    img_rgb : torch.tensor, shape (..., 3, H, W)
+    img_rgb : torch.Tensor, shape (..., 3, H, W)
         RGB image(s).
 
     Returns
     -------
-    torch.tensor, shape (..., 1, H, W)
+    torch.Tensor, shape (..., 1, H, W)
         Lightness (L*) image(s).
 
     '''
@@ -108,12 +108,12 @@ def rgb2ab(img_rgb):
 
     Parameters
     ----------
-    img_rgb : torch.tensor, shape (..., 3, H, W)
+    img_rgb : torch.Tensor, shape (..., 3, H, W)
         RGB image(s).
 
     Returns
     -------
-    torch.tensor, shape (..., 2, H, W)
+    torch.Tensor, shape (..., 2, H, W)
         Image(s) in the a*b* color space.
 
     '''
