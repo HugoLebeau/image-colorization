@@ -3,11 +3,14 @@ import torch
 import numpy as np
 from datetime import datetime
 from torch import optim
+from torchvision import transforms
 from tqdm import tqdm
 
-from datasets.datasets import Places205
+from loss_functions import MCE
 from models import Zhang16
 from transforms import data_transform
+from utils import ab2z, logdistrib_smoothed
+from datasets.datasets import Places205
 
 parser = argparse.ArgumentParser(description="Automatic image colorization")
 parser.add_argument('--dataset', type=str, metavar="DATASET",
@@ -56,10 +59,13 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
         Data loader of the training set.
     val_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the validation set.
+    proba_ab : torch.tensor
+        Distribution of a*b* visible values in the dataset.
 
     '''
     if dataset_name == "Places205":
-        dataset = Places205('datasets/', transform=transform, maxsize=100)
+        dataset = Places205('datasets/', transform=transform, maxsize=10)
+        proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
     else:
         raise NameError(dataset_name)
     dataset_size = len(dataset)
@@ -68,9 +74,9 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=n_threads)
-    return train_size, val_size, train_loader, val_loader
+    return train_size, val_size, train_loader, val_loader, proba_ab
 
-def training(model_name, train_loader, val_loader, use_cuda=False):
+def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     '''
     Load a model and train it with the given data.
 
@@ -82,6 +88,8 @@ def training(model_name, train_loader, val_loader, use_cuda=False):
         Data loader of the training set.
     val_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the validation set.
+    proba_ab : torch.tensor
+        Distribution of a*b* visible values in the dataset.
     use_cuda : bool, optional
         Whether or not to use CUDA. The default is False.
 
@@ -119,7 +127,12 @@ def training(model_name, train_loader, val_loader, use_cuda=False):
             return lr
         optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
-        criterion = 1
+        w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
+        w /= (proba_ab*w).sum()
+        resize = transforms.Resize((64, 64))
+        def criterion(prop, target):
+            z_target = ab2z(resize(target.cpu()), k=5, sigma=5.)
+            return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
     else:
         raise NameError(model_name)
     
@@ -128,7 +141,6 @@ def training(model_name, train_loader, val_loader, use_cuda=False):
     for epoch in tqdm(epochs):
         # TRAINING
         model.train()
-        training_loss.append
         for data, target in train_loader:
             if use_cuda:
                 data, target = data.cuda(), target.cuda()
@@ -185,6 +197,6 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    train_size, val_size, train_loader, val_loader = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
-    model, training_loss, validation_loss = training(args.model, train_loader, val_loader, use_cuda)
+    train_size, val_size, train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
+    model, training_loss, validation_loss = training(args.model, train_loader, val_loader, proba_ab, use_cuda)
     save(model, training_loss, validation_loss)
