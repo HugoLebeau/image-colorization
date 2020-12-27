@@ -12,22 +12,7 @@ from transforms import data_transform
 from utils import ab2z, logdistrib_smoothed
 from datasets.datasets import Places205
 
-parser = argparse.ArgumentParser(description="Automatic image colorization")
-parser.add_argument('--dataset', type=str, metavar="DATASET",
-                    help="Dataset used for training.")
-parser.add_argument('--model', type=str, metavar="MODEL",
-                    help="Model to be trained.")
-parser.add_argument('--batch-size', type=int, default=4, metavar="BATCHSIZE",
-                    help="Training batch size (default: 4).")
-parser.add_argument('--val-part', type=float, default=0.1, metavar='VALPART',
-                    help="Portion of the dataset kept for validation (default: 0.1).")
-parser.add_argument('--n-threads', type=int, default=0, metavar="NTHREADS",
-                    help="How many subprocesses to use for data loading (default: 0).")
-parser.add_argument('--seed', type=int, default=1, metavar="SEED",
-                    help="Random seed (default: 1).")
-args = parser.parse_args()
-
-def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_transform):
+def load_dataset(dataset_name, val_part, batch_size, max_size, n_threads, transform=data_transform):
     '''
     Load a dataset and perform a train/val split.
 
@@ -39,6 +24,8 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
         Portion of the dataset kept for validation.
     batch_size : int
         Training batch size.
+    max_size : int
+        Maximum number of images. If None, the full dataset is loaded.
     n_threads : int
         How many subprocesses to use for data loading.
     transform : callable, optional
@@ -60,7 +47,7 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
 
     '''
     if dataset_name == "Places205":
-        dataset = Places205('datasets/', transform=transform, maxsize=10)
+        dataset = Places205('datasets/', transform=transform, maxsize=max_size)
         proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
     else:
         raise NameError(dataset_name)
@@ -69,7 +56,7 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
     train_size = dataset_size-val_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=n_threads)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     return train_loader, val_loader, proba_ab
 
 def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
@@ -158,7 +145,7 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     
     return model, training_loss, validation_loss
 
-def save(model_name, model, training_loss, validation_loss):
+def save(path, model_name, model, training_loss, validation_loss):
     '''
     Save the model weights in a pth file and the training/validations losses
     in a csv file.
@@ -180,8 +167,8 @@ def save(model_name, model, training_loss, validation_loss):
 
     '''
     now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    torch.save(model.state_dict(), model_name+'_'+now+'.pth')
-    file = open(model_name+'_'+now+'.csv', 'w')
+    torch.save(model.state_dict(), path+model_name+'_'+now+'.pth')
+    file = open(path+model_name+'_'+now+'.csv', 'w')
     file.write("Validation loss,{}\n".format(validation_loss))
     file.write("Iteration,Training loss\n")
     n_it = len(training_loss)
@@ -190,10 +177,29 @@ def save(model_name, model, training_loss, validation_loss):
     file.close()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Automatic image colorization")
+    parser.add_argument('--dataset', type=str, metavar="DATASET",
+                        help="Dataset used for training.")
+    parser.add_argument('--model', type=str, metavar="MODEL",
+                        help="Model to be trained.")
+    parser.add_argument('--batch-size', type=int, default=4, metavar="BATCHSIZE",
+                        help="Training batch size (default: 4).")
+    parser.add_argument('--val-part', type=float, default=0.1, metavar='VALPART',
+                        help="Portion of the dataset kept for validation (default: 0.1).")
+    parser.add_argument('--max-size', type=int, default=None, metavar="MAXSIZE",
+                        help="Maximum number of images (default: None).")
+    parser.add_argument('--n-threads', type=int, default=0, metavar="NTHREADS",
+                        help="How many subprocesses to use for data loading (default: 0).")
+    parser.add_argument('--seed', type=int, default=1, metavar="SEED",
+                        help="Random seed (default: 1).")
+    args = parser.parse_args()
+    
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
+    train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.max_size, args.n_threads)
+    print("Training set: {} batches.".format(len(train_loader)))
+    print("Validation set: {} batches.".format(len(val_loader)))
     model, training_loss, validation_loss = training(args.model, train_loader, val_loader, proba_ab, use_cuda)
-    save(args.model, model, training_loss, validation_loss)
+    save('outputs/', args.model, model, training_loss, validation_loss)
