@@ -84,4 +84,4 @@ class Zhang16(nn.Module):
         x = self.conv6(x)
         x = self.conv7(x)
         z = self.softmax(self.conv8(x)) # a*b* probability distribution
-        return z
+        return z.transpose(-3, -2).transpose(-2, -1)
