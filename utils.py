@@ -14,7 +14,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
 
     Parameters
     ----------
-    img_ab : torch.tensor, shape (N, 2, H, W)
+    img_ab : torch.Tensor, shape (N, 2, H, W)
         a* and b* channels of a batch of images.
     k : int, optional
         Number of nearest neighbors to each ground truth pixel considered in
@@ -28,7 +28,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
 
     Returns
     -------
-    z : torch.tensor, shape(N, H, W, Q)
+    z : torch.Tensor, shape(N, H, W, Q)
         Soft-encoded images.
 
     '''
@@ -51,16 +51,16 @@ def z2ab(z, temp=0.38):
 
     Parameters
     ----------
-    z : torch.tensor, shape (H, W, Q)
+    z : torch.Tensor, shape (H, W, Q)
         Class probabilities.
     temp : float, optional
         Temperature in ]0, 1]. The default is 0.38.
 
     Returns
     -------
-    torch.tensor, shape (H, W)
+    torch.Tensor, shape (H, W)
         a* estimate.
-    torch.tensor, shape (H, W)
+    torch.Tensor, shape (H, W)
         b* estimate.
 
     '''
@@ -77,14 +77,14 @@ def logdistrib_smoothed(logdistrib, sigma=5.):
 
     Parameters
     ----------
-    logdistrib : torch.tensor, shape (Q)
+    logdistrib : torch.Tensor, shape (Q)
         The log of the distribution.
     sigma : float, optional
         Standard deviation of the Gaussian kernel. The default is 5..
 
     Returns
     -------
-    torch.tensor, shape (Q)
+    torch.Tensor, shape (Q)
         The log of the smoothed distribution.
 
     '''
