@@ -51,10 +51,6 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
 
     Returns
     -------
-    train_size : int
-        Size of the training set.
-    val_size : int
-        Size of the validation set.
     train_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the training set.
     val_loader : torch.utils.data.dataloader.DataLoader
@@ -74,7 +70,7 @@ def load_dataset(dataset_name, val_part, batch_size, n_threads, transform=data_t
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=n_threads)
-    return train_size, val_size, train_loader, val_loader, proba_ab
+    return train_loader, val_loader, proba_ab
 
 def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     '''
@@ -102,10 +98,10 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     -------
     model : torch.nn.Module
         Trained model.
-    training_loss : ndarray, shape (n_epochs,)
-        Training loss at each epoch.
-    validation_loss : ndarray, shape (n_epochs,)
-        Validation loss at each epoch.
+    training_loss : torch.Tensor
+        Training loss at each iteration.
+    validation_loss : torch.Tensor
+        Validation loss.
 
     '''
     if model_name == "Zhang16":
@@ -116,15 +112,15 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         else:
             print("Using CPU")
         
-        lr_steps = [(3e-5, 200000), (1e-5, 375000), (3e-6, 450000)]
-        n_epochs = lr_steps[-1][1]
-        def lr_lambda(epoch):
-            n, lr = len(lr_steps), None
-            for i in range(n):
-                if epoch < lr_steps[i][1]:
-                    lr = lr_steps[i][0]
-                    break
-            return lr
+        lr_mults = [(1./3., 200000), (0.1, 375000)]
+        n = len(lr_mults)
+        def lr_lambda(it):
+            if it <= lr_mults[0][1]:
+                return 1.
+            for i in range(n-1):
+                if it > lr_mults[i][1] and it <= lr_mults[i+1][1]:
+                    return lr_mults[i][0]
+            return lr_mults[-1][0]
         optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
@@ -132,51 +128,51 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         resize = transforms.Resize((64, 64))
         def criterion(prop, target):
             z_target = ab2z(resize(target.cpu()), k=5, sigma=5.)
-            return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
+            return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
     else:
         raise NameError(model_name)
     
-    training_loss, validation_loss = np.zeros(n_epochs), np.zeros(n_epochs)
-    epochs = np.arange(n_epochs)
-    for epoch in tqdm(epochs):
-        # TRAINING
-        model.train()
-        for data, target in train_loader:
-            if use_cuda:
-                data, target = data.cuda(), target.cuda()
-            optimizer.zero_grad()
-            output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
-            training_loss[epoch] += loss.data.item()
-            optimizer.step()
+    training_loss, validation_loss = torch.zeros(len(train_loader)), 0
+    # TRAINING
+    model.train()
+    for it, (data, target) in tqdm(enumerate(train_loader)):
+        if use_cuda:
+            data, target = data.cuda(), target.cuda()
+        optimizer.zero_grad()
+        output = model(data)
+        loss = criterion(output, target)
+        loss.backward()
+        training_loss[it] = loss.data.item()/data.shape[0]
+        optimizer.step()
         scheduler.step()
-        training_loss[epoch] /= train_size
-        # VALIDATION
-        model.eval()
-        for data, target in val_loader:
-            if use_cuda:
-                data, target = data.cuda(), target.cuda()
-            output = model(data)
-            validation_loss[epoch] += criterion(output, target).data.item()
-        if val_size > 0:
-            validation_loss[epoch] /= val_size
+    # VALIDATION
+    model.eval()
+    for data, target in tqdm(val_loader):
+        if use_cuda:
+            data, target = data.cuda(), target.cuda()
+        output = model(data)
+        validation_loss += criterion(output, target).data.item()
+    val_size = len(val_loader)
+    if val_size > 0:
+        validation_loss /= val_size
     
     return model, training_loss, validation_loss
 
-def save(model, training_loss, validation_loss):
+def save(model_name, model, training_loss, validation_loss):
     '''
     Save the model weights in a pth file and the training/validations losses
     in a csv file.
 
     Parameters
     ----------
+    model_name : str
+        Name of the model.
     model : torch.nn.Module
         Model whose weights are to be saved.
-    training_loss : ndarray, shape (n_epochs,)
-        Training loss at each epoch.
-    validation_loss : ndarray, shape (n_epochs,)
-        Validation loss at each epoch.
+    training_loss : torch.Tensor
+        Training loss at each iteration.
+    validation_loss : torch.Tensor
+        Validation loss.
 
     Returns
     -------
@@ -184,12 +180,13 @@ def save(model, training_loss, validation_loss):
 
     '''
     now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    torch.save(model.state_dict(), model+'_'+now+'.pth')
-    file = open(model+'_'+now+'.csv', 'w')
-    file.write("Epoch,Training loss,Validation loss\n")
-    n_epochs = len(training_loss)
-    for i in range(n_epochs):
-        file.write("{},{},{}\n".format(i+1, training_loss[i], validation_loss[i]))
+    torch.save(model.state_dict(), model_name+'_'+now+'.pth')
+    file = open(model_name+'_'+now+'.csv', 'w')
+    file.write("Validation loss,{}\n".format(validation_loss))
+    file.write("Iteration,Training loss\n")
+    n_it = len(training_loss)
+    for it in range(n_it):
+        file.write("{},{}\n".format(it+1, training_loss[it]))
     file.close()
 
 if __name__ == '__main__':
@@ -197,6 +194,6 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    train_size, val_size, train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
+    train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.n_threads)
     model, training_loss, validation_loss = training(args.model, train_loader, val_loader, proba_ab, use_cuda)
-    save(model, training_loss, validation_loss)
+    save(args.model, model, training_loss, validation_loss)
