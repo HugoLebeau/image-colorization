@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 from torchvision import transforms
 
 mat_rgb2lab = torch.tensor([[0.412453, 0.357580, 0.180423],
