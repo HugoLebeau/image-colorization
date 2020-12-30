@@ -1,3 +1,4 @@
 __pycache__
 datasets/Places205
 datasets/directory_Places205.csv
+test.py
