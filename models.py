@@ -1,5 +1,8 @@
 from torch import nn
-from utils import q # number of in-gamut values
+from utils import q, zero_padding
+from torchvision.models.detection import maskrcnn_resnet50_fpn
+
+MaskRCNN = maskrcnn_resnet50_fpn(pretrained=True)
 
 class Zhang16(nn.Module):
     def __init__(self, q=q):
@@ -85,3 +88,33 @@ class Zhang16(nn.Module):
         x = self.conv7(x)
         z = self.softmax(self.conv8(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
+
+class Su20_feature_fusion(nn.Module):
+    def __init__(self, c):
+        super(Su20_feature_fusion, self).__init__()
+        self.background_conv = nn.Sequential(
+            nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLu(inplace=True),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(16, 1, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            )
+        self.instance_conv = nn.Sequential(
+            nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLu(inplace=True),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(16, 1, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            )
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, background, instance, box):
+        background_weight = self.background_conv(background)
+        instance_weight = [self.instance_conv(i) for i in instance]
+        weight_map = zero_padding(background_weight, instance_weight, box)
+        fused = self.softmax(background_weight)*background
+        for n in range(fused.shape[0]):
+            fused[n] += self.softmax(weight_map[n])*instance[n]
+        return fused
