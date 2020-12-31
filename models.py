@@ -215,9 +215,9 @@ class Su20_Zhang16_instance(nn.Module):
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
+            nn.ReLU(inplace=True)
             )
+        self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
     
     def forward(self, img_l):
@@ -229,13 +229,13 @@ class Su20_Zhang16_instance(nn.Module):
         x5 = self.conv5(x4)
         x6 = self.conv6(x5)
         x7 = self.conv7(x6)
-        z = self.softmax(self.conv8(x7)) # a*b* probability distribution
-        return [x1, x2, x3, x4, x5, x6, x7, z.transpose(-3, -2).transpose(-2, -1)]
+        x8 = self.conv8(x7)
+        z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
+        return [x1, x2, x3, x4, x5, x6, x7, x8], z.transpose(-3, -2).transpose(-2, -1)
 
 class Su20_Zhang16_background(nn.Module):
-    def __init__(self, instance, q=q):
+    def __init__(self, q=q):
         super(Su20_Zhang16_background, self).__init__()
-        self.instance = instance
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -308,20 +308,25 @@ class Su20_Zhang16_background(nn.Module):
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
+            nn.ReLU(inplace=True)
             )
-        self.fusion8 = Su20_fusion(q)
+        self.fusion8 = Su20_fusion(256)
+        self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
     
-    def forward(self, img_l):
+    def forward(self, img_l, instance, box):
         x = (img_l-50.)/100. # normalize L* input
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.conv6(x)
-        x = self.conv7(x)
-        z = self.softmax(self.conv8(x)) # a*b* probability distribution
+        x1, x2, x3, x4, x5, x6, x7, x8 = instance
+        box2 = [b//2 for b in box]
+        box4 = [b//4 for b in box]
+        box8 = [b//8 for b in box]
+        x = self.fusion1(self.conv1(x), x1, box2)
+        x = self.fusion2(self.conv2(x), x2, box4)
+        x = self.fusion3(self.conv3(x), x3, box8)
+        x = self.fusion4(self.conv4(x), x4, box8)
+        x = self.fusion5(self.conv5(x), x5, box8)
+        x = self.fusion6(self.conv6(x), x6, box8)
+        x = self.fusion7(self.conv7(x), x7, box8)
+        x = self.fusion8(self.conv8(x), x8, box4)
+        z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
