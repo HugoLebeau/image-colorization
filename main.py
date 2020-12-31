@@ -99,17 +99,8 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         else:
             print("Using CPU.")
         
-        lr_mults = [(1./3., 200000), (0.1, 375000)]
-        n = len(lr_mults)
-        def lr_lambda(it):
-            if it <= lr_mults[0][1]:
-                return 1.
-            for i in range(n-1):
-                if it > lr_mults[i][1] and it <= lr_mults[i+1][1]:
-                    return lr_mults[i][0]
-            return lr_mults[-1][0]
         optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
@@ -124,7 +115,7 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     ok = True
     # TRAINING
     model.train()
-    for it, (data, target) in tqdm(enumerate(train_loader)):
+    for it, (data, target) in enumerate(tqdm(train_loader)):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
@@ -136,7 +127,7 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         loss.backward()
         training_loss[it] = loss.data.item()/data.shape[0]
         optimizer.step()
-        scheduler.step()
+        scheduler.step(training_loss[it])
     # VALIDATION
     model.eval()
     if ok:
@@ -205,7 +196,5 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     
     train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.max_size, args.n_threads)
-    print("Training set: {} batches.".format(len(train_loader)))
-    print("Validation set: {} batches.".format(len(val_loader)))
     model, training_loss, validation_loss = training(args.model, train_loader, val_loader, proba_ab, use_cuda)
     save('outputs/', args.model, model, training_loss, validation_loss)
