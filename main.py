@@ -7,7 +7,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from loss_functions import MCE
-from models import Zhang16
+from models import model_init, Zhang16
 from transforms import data_transform
 from utils import ab2z, logdistrib_smoothed
 from datasets.datasets import Places205
@@ -94,10 +94,10 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     if model_name == "Zhang16":
         model = Zhang16()
         if use_cuda:
-            print("Using GPU")
+            print("Using GPU.")
             model.cuda()
         else:
-            print("Using CPU")
+            print("Using CPU.")
         
         lr_mults = [(1./3., 200000), (0.1, 375000)]
         n = len(lr_mults)
@@ -118,8 +118,10 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
             return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
     else:
         raise NameError(model_name)
+    model_init(model)
     
     training_loss, validation_loss = torch.zeros(len(train_loader)), 0
+    ok = True
     # TRAINING
     model.train()
     for it, (data, target) in tqdm(enumerate(train_loader)):
@@ -128,20 +130,24 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
+        if np.isnan(loss.data.item()):
+            ok = False
+            break
         loss.backward()
         training_loss[it] = loss.data.item()/data.shape[0]
         optimizer.step()
         scheduler.step()
     # VALIDATION
     model.eval()
-    for data, target in tqdm(val_loader):
-        if use_cuda:
-            data, target = data.cuda(), target.cuda()
-        output = model(data)
-        validation_loss += criterion(output, target).data.item()
-    val_size = len(val_loader)
-    if val_size > 0:
-        validation_loss /= val_size
+    if ok:
+        for data, target in tqdm(val_loader):
+            if use_cuda:
+                data, target = data.cuda(), target.cuda()
+            output = model(data)
+            validation_loss += criterion(output, target).data.item()
+        val_size = len(val_loader)
+        if val_size > 0:
+            validation_loss /= val_size
     
     return model, training_loss, validation_loss
 
