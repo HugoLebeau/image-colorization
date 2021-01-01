@@ -58,10 +58,8 @@ def z2ab(z, temp=0.38):
 
     Returns
     -------
-    torch.Tensor, shape (N, 1, H, W)
-        a* estimate.
-    torch.Tensor, shape (N, 1, H, W)
-        b* estimate.
+    torch.Tensor, shape (N, 2, H, W)
+        a*b* estimate.
 
     '''
     n, h, w, _ = z.shape
@@ -69,7 +67,8 @@ def z2ab(z, temp=0.38):
     ft_z = (temp_z.permute(3, 0, 1, 2)/torch.sum(temp_z, axis=-1)).permute(1, 2, 3, 0)
     prod_a = ft_z*visible_ab[:, 0]
     prod_b = ft_z*visible_ab[:, 1]
-    return (torch.sum(prod_a, axis=-1).unsqueeze(dim=1), torch.sum(prod_b, axis=-1).unsqueeze(dim=1))
+    a, b = torch.sum(prod_a, axis=-1).unsqueeze(dim=1), torch.sum(prod_b, axis=-1).unsqueeze(dim=1)
+    return torch.cat((a, b), dim=1)
 
 def logdistrib_smoothed(logdistrib, sigma=5.):
     '''
@@ -125,3 +124,32 @@ def zero_padding(background_weight, instance_weight, box):
             weight_map[i].append(torch.nn.functional.pad(resized, pad, "constant", 0))
         weight_map[i] = torch.cat(weight_map[i])
     return weight_map
+
+def extract(image, box, resize):
+    '''
+    Extract instances in the given boxes and resize them.
+
+    Parameters
+    ----------
+    image : torch.Tensor, shape (N, C, H, W)
+        A batch of images.
+    box : list[N] of torch.Tensor, shape (B[i], 4)
+        Boxes of the instances in each image.
+    resize : callable
+        Function that resizes to (H, W).
+
+    Returns
+    -------
+    instance : list[N] of torch.Tensor, shape (B[i], C, H, W)
+        For each image, a tensor with each instance in shape (H, W).
+
+    '''
+    n = len(box)
+    instance = list()
+    for i in range(n):
+        instance.append(list())
+        for j in range(box[i].shape[0]):
+            extracted = image[i, :, box[i][j, 1]:box[i][j, 3], box[i][j, 0]:box[i][j,2]]
+            instance[i].append(resize(extracted).unsqueeze(dim=0))
+        instance[i] = torch.cat(instance[i], dim=0)
+    return instance
