@@ -1,8 +1,7 @@
 from torch import nn
-from utils import q, zero_padding
+from utils import q, z2ab, zero_padding, extract
+from torchvision import transforms
 from torchvision.models.detection import maskrcnn_resnet50_fpn
-
-MaskRCNN = maskrcnn_resnet50_fpn(pretrained=True)
 
 def model_init(model):
     '''
@@ -117,9 +116,9 @@ class Zhang16(nn.Module):
         z = self.softmax(self.conv8(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
-class Su20_fusion(nn.Module):
+class Su20Fusion(nn.Module):
     def __init__(self, c):
-        super(Su20_fusion, self).__init__()
+        super(Su20Fusion, self).__init__()
         self.background_conv = nn.Sequential(
             nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLu(inplace=True),
@@ -147,9 +146,16 @@ class Su20_fusion(nn.Module):
             fused[n] += self.softmax(weight_map[n])*instance[n]
         return fused
 
-class Su20_Zhang16_instance(nn.Module):
-    def __init__(self, q=q):
-        super(Su20_Zhang16_instance, self).__init__()
+class Su20Zhang16Instance(nn.Module):
+    def __init__(self, q=q, return_features=False, min_score=0.5):
+        super(Su20Zhang16Instance, self).__init__()
+        self.return_features = return_features
+        self.maskRCNN = maskrcnn_resnet50_fpn(pretrained=True)
+        for param in self.maskRCNN.parameters():
+            param.requires_grad = False
+        self.maskRCNN.eval()
+        self.min_score = min_score
+        self.resize = transforms.Resize((256, 256))
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -221,21 +227,41 @@ class Su20_Zhang16_instance(nn.Module):
         self.softmax = nn.Softmax(dim=1)
     
     def forward(self, img_l):
-        x = (img_l-50.)/100. # normalize L* input
-        x1 = self.conv1(x)
-        x2 = self.conv2(x1)
-        x3 = self.conv3(x2)
-        x4 = self.conv4(x3)
-        x5 = self.conv5(x4)
-        x6 = self.conv6(x5)
-        x7 = self.conv7(x6)
-        x8 = self.conv8(x7)
-        z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
-        return [x1, x2, x3, x4, x5, x6, x7, x8], z.transpose(-3, -2).transpose(-2, -1)
+        x = img_l/100. # normalize L* input 1/2
+        mask = self.maskRCNN(x)
+        box = [m['boxes'][m['scores'] > self.min_score].round().int() for m in mask]
+        x -= 0.5 # normalize L* input 2/2
+        instance = extract(x, box, self.resize)
+        features = [list() for _ in range(8)]
+        color = list()
+        for x0 in instance:
+            x1 = self.conv1(x0)
+            x2 = self.conv2(x1)
+            x3 = self.conv3(x2)
+            x4 = self.conv4(x3)
+            x5 = self.conv5(x4)
+            x6 = self.conv6(x5)
+            x7 = self.conv7(x6)
+            x8 = self.conv8(x7)
+            z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
+            features[0].append(x1)
+            features[1].append(x2)
+            features[2].append(x3)
+            features[3].append(x4)
+            features[4].append(x5)
+            features[5].append(x6)
+            features[6].append(x7)
+            features[7].append(x8)
+            color.append(z2ab(z.transpose(-3, -2).transpose(-2, -1)))
+        # ???
+        if self.return_features:
+            return [x1, x2, x3, x4, x5, x6, x7, x8], z2ab(z.transpose(-3, -2).transpose(-2, -1))
+        else:
+            return z2ab(z.transpose(-3, -2).transpose(-2, -1))
 
-class Su20_Zhang16_background(nn.Module):
+class Su20Zhang16Background(nn.Module):
     def __init__(self, q=q):
-        super(Su20_Zhang16_background, self).__init__()
+        super(Su20Zhang16Background, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -243,7 +269,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(64)
             )
-        self.fusion1 = Su20_fusion(64)
+        self.fusion1 = Su20Fusion(64)
         self.conv2 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -251,7 +277,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(128)
             )
-        self.fusion2 = Su20_fusion(128)
+        self.fusion2 = Su20Fusion(128)
         self.conv3 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -261,7 +287,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(256)
             )
-        self.fusion3 = Su20_fusion(256)
+        self.fusion3 = Su20Fusion(256)
         self.conv4 = nn.Sequential(
             nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -271,7 +297,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(512)
             )
-        self.fusion4 = Su20_fusion(512)
+        self.fusion4 = Su20Fusion(512)
         self.conv5 = nn.Sequential(
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, stride=1, padding=2, bias=True),
             nn.ReLU(inplace=True),
@@ -281,7 +307,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(512)
             ) # à trous
-        self.fusion5 = Su20_fusion(512)
+        self.fusion5 = Su20Fusion(512)
         self.conv6 = nn.Sequential(
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, stride=1, padding=2, bias=True),
             nn.ReLU(inplace=True),
@@ -291,7 +317,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(512)
             ) # à trous
-        self.fusion6 = Su20_fusion(512)
+        self.fusion6 = Su20Fusion(512)
         self.conv7 = nn.Sequential(
             nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -301,7 +327,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(512)
             )
-        self.fusion7 = Su20_fusion(512)
+        self.fusion7 = Su20Fusion(512)
         self.conv8 = nn.Sequential(
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True),
             nn.ReLU(inplace=True),
@@ -310,7 +336,7 @@ class Su20_Zhang16_background(nn.Module):
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True)
             )
-        self.fusion8 = Su20_fusion(256)
+        self.fusion8 = Su20Fusion(256)
         self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
     
@@ -329,4 +355,4 @@ class Su20_Zhang16_background(nn.Module):
         x = self.fusion7(self.conv7(x), x7, box8)
         x = self.fusion8(self.conv8(x), x8, box4)
         z = self.softmax(self.conv_out(x)) # a*b* probability distribution
-        return z.transpose(-3, -2).transpose(-2, -1)
+        return z2ab(z.transpose(-3, -2).transpose(-2, -1))
