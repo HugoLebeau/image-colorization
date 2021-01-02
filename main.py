@@ -1,18 +1,19 @@
 import argparse
 import torch
 import numpy as np
+import pandas as pd
 from datetime import datetime
 from torch import optim
 from torchvision import transforms
 from tqdm import tqdm
 
-from loss_functions import MCE
-from models import model_init, Zhang16
+from loss_functions import MCE, smoothL1
+from models import model_init, Zhang16, Su20Fusion, Su20Zhang16Background, Su20Zhang16Instance
 from transforms import data_transform
 from utils import ab2z, logdistrib_smoothed
 from datasets.datasets import Places205
 
-def load_dataset(dataset_name, val_part, batch_size, max_size, n_threads, transform=data_transform):
+def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transform=data_transform):
     '''
     Load a dataset and perform a train/val split.
 
@@ -20,8 +21,8 @@ def load_dataset(dataset_name, val_part, batch_size, max_size, n_threads, transf
     ----------
     dataset_name : str
         Name of the dataset.
-    val_part : float
-        Portion of the dataset kept for validation.
+    val_size : int
+        Size of the validation set.
     batch_size : int
         Training batch size.
     max_size : int
@@ -52,14 +53,13 @@ def load_dataset(dataset_name, val_part, batch_size, max_size, n_threads, transf
     else:
         raise NameError(dataset_name)
     dataset_size = len(dataset)
-    val_size = int(val_part*dataset_size)
     train_size = dataset_size-val_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     return train_loader, val_loader, proba_ab
 
-def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
+def training(model_name, weights, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False):
     '''
     Load a model and train it with the given data.
 
@@ -67,10 +67,17 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
     ----------
     model_name : str
         Name of the model to be trained.
+    weights : str
+        Path to weights for the initialisation of the model. If None, weights
+        are randomly initialized
     train_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the training set.
     val_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the validation set.
+    val_size : int
+        Size of the validation set.
+    val_step : int
+        Number of training iterations before a validation is performed.
     proba_ab : torch.tensor
         Distribution of a*b* visible values in the dataset.
     use_cuda : bool, optional
@@ -98,7 +105,6 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
             model.cuda()
         else:
             print("Using CPU.")
-        
         optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
@@ -107,56 +113,78 @@ def training(model_name, train_loader, val_loader, proba_ab, use_cuda=False):
         def criterion(prop, target):
             z_target = ab2z(resize(target.cpu()), k=5, sigma=5.)
             return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
+    elif model_name == "Su20Instance":
+        model = Su20Zhang16Instance()
+        if use_cuda:
+            print("Using GPU.")
+            model.cuda()
+        else:
+            print("Using CPU.")
+        optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
+        criterion = smoothL1
+    elif model_name == "Su20Fusion":
+        model = Su20Fusion()
+        if use_cuda:
+            print("Using GPU.")
+            model.cuda()
+        else:
+            print("Using CPU.")
+        optimizer = 1
+        scheduler = 1
+        criterion = 1
     else:
         raise NameError(model_name)
-    model_init(model)
+    if weights:
+        model.load_state_dict(torch.load(weights))
+    else:
+        model_init(model)
     
-    training_loss, validation_loss = torch.zeros(len(train_loader)), 0
-    ok = True
+    n_ite = len(train_loader)
+    df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss'], index=range(n_ite))
     # TRAINING
     model.train()
-    for it, (data, target) in enumerate(tqdm(train_loader)):
+    for ite, (data, target) in enumerate(tqdm(train_loader)):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
+        df['lr'][ite] = optimizer.param_groups[0]['lr']
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
         if np.isnan(loss.data.item()):
-            ok = False
             break
         loss.backward()
-        training_loss[it] = loss.data.item()/data.shape[0]
+        df['training loss'][ite] = loss.data.item()/data.shape[0]
         optimizer.step()
-        scheduler.step(training_loss[it])
-    # VALIDATION
-    model.eval()
-    if ok:
-        for data, target in tqdm(val_loader):
-            if use_cuda:
-                data, target = data.cuda(), target.cuda()
-            output = model(data)
-            validation_loss += criterion(output, target).data.item()
-        val_size = len(val_loader)
-        if val_size > 0:
-            validation_loss /= val_size
+        scheduler.step(df['training loss'][ite])
+        if ite > 0 and (ite%val_step == 0 or ite == n_ite-1): # VALIDATION
+            df['validation loss'][ite] = 0.
+            model.eval()
+            for data, target in val_loader:
+                if use_cuda:
+                    data, target = data.cuda(), target.cuda()
+                output = model(data)
+                df['validation loss'][ite] += criterion(output, target).data.item()
+            df['validation loss'][ite] /= val_size
+            model.train()
     
-    return model, training_loss, validation_loss
+    return model, df
 
-def save(path, model_name, model, training_loss, validation_loss):
+def save(path, args, model, df):
     '''
     Save the model weights in a pth file and the training/validations losses
     in a csv file.
 
     Parameters
     ----------
-    model_name : str
-        Name of the model.
+    path : str
+        Where to save the files.
+    args : argparse.Namespace
+        Arguments that produced the model.
     model : torch.nn.Module
         Model whose weights are to be saved.
-    training_loss : torch.Tensor
-        Training loss at each iteration.
-    validation_loss : torch.Tensor
-        Validation loss.
+    df : pandas.DataFrame
+        Data frame with information on the training.
 
     Returns
     -------
@@ -164,14 +192,9 @@ def save(path, model_name, model, training_loss, validation_loss):
 
     '''
     now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    torch.save(model.state_dict(), path+model_name+'_'+now+'.pth')
-    file = open(path+model_name+'_'+now+'.csv', 'w')
-    file.write("Validation loss,{}\n".format(validation_loss))
-    file.write("Iteration,Training loss\n")
-    n_it = len(training_loss)
-    for it in range(n_it):
-        file.write("{},{}\n".format(it+1, training_loss[it]))
-    file.close()
+    torch.save(model.state_dict(), path+args.model+'_'+now+'.pth')
+    df.to_csv(path+args.model+'_'+now+'.csv')
+    pd.Series(vars(args)).to_csv(path+args.model+'_'+now+'.txt', header=0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Automatic image colorization")
@@ -179,10 +202,14 @@ if __name__ == '__main__':
                         help="Dataset used for training.")
     parser.add_argument('--model', type=str, metavar="MODEL",
                         help="Model to be trained.")
-    parser.add_argument('--batch-size', type=int, default=4, metavar="BATCHSIZE",
-                        help="Training batch size (default: 4).")
-    parser.add_argument('--val-part', type=float, default=0.1, metavar='VALPART',
-                        help="Portion of the dataset kept for validation (default: 0.1).")
+    parser.add_argument('--weights', type=str, default=None, metavar="WEIGHTS",
+                        help="Path to weights for the initialisation of the model (default: None).")
+    parser.add_argument('--batch-size', type=int, default=32, metavar="BATCHSIZE",
+                        help="Training batch size (default: 32).")
+    parser.add_argument('--val-size', type=int, default=10000, metavar='VALSIZE',
+                        help="Size of the validation set (default: 10 000).")
+    parser.add_argument('--val-step', type=float, default=100000, metavar='VALSIZE',
+                        help="Number of training iterations before a validation is performed (default: 100 000).")
     parser.add_argument('--max-size', type=int, default=None, metavar="MAXSIZE",
                         help="Maximum number of images (default: None).")
     parser.add_argument('--n-threads', type=int, default=0, metavar="NTHREADS",
@@ -195,6 +222,6 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_part, args.batch_size, args.max_size, args.n_threads)
-    model, training_loss, validation_loss = training(args.model, train_loader, val_loader, proba_ab, use_cuda)
-    save('outputs/', args.model, model, training_loss, validation_loss)
+    train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_size, args.batch_size, args.max_size, args.n_threads)
+    model, df = training(args.model, args.weights, train_loader, val_loader, args.val_size, args.val_step, proba_ab, use_cuda)
+    save('outputs/', args, model, df)
