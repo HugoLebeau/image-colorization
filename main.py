@@ -8,9 +8,9 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from loss_functions import MCE, smoothL1
-from models import model_init, Zhang16, Su20Fusion, Su20Zhang16Background, Su20Zhang16Instance
+from models import Zhang16, Su20, Su20Zhang16Instance
 from transforms import data_transform
-from utils import ab2z, logdistrib_smoothed
+from utils import ab2z, logdistrib_smoothed, extract
 from datasets.datasets import Places205
 
 def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transform=data_transform):
@@ -99,7 +99,7 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
 
     '''
     if model_name == "Zhang16":
-        model = Zhang16()
+        model = Zhang16(weights=weights)
         if use_cuda:
             print("Using GPU.")
             model.cuda()
@@ -114,7 +114,27 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             z_target = ab2z(resize(target.cpu()), k=5, sigma=5.)
             return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
     elif model_name == "Su20Instance":
-        model = Su20Zhang16Instance()
+        model = Su20Zhang16Instance(weights=weights)
+        if use_cuda:
+            print("Using GPU.")
+            model.cuda()
+        else:
+            print("Using CPU.")
+        optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
+        w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
+        w /= (proba_ab*w).sum()
+        resize = transforms.Resize((64, 64))
+        def criterion(output, target):
+            prop, box = output
+            target_instance = extract(target.cpu(), box, resize)
+            loss = 0.
+            for i, img in enumerate(target_instance):
+                z_target = ab2z(img, k=5, sigma=5.)
+                loss += MCE(prop[i].cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
+            return loss
+    elif model_name == "Su20":
+        model = Su20(weights=weights)
         if use_cuda:
             print("Using GPU.")
             model.cuda()
@@ -123,22 +143,8 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
         optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
         criterion = smoothL1
-    elif model_name == "Su20Fusion":
-        model = Su20Fusion()
-        if use_cuda:
-            print("Using GPU.")
-            model.cuda()
-        else:
-            print("Using CPU.")
-        optimizer = 1
-        scheduler = 1
-        criterion = 1
     else:
         raise NameError(model_name)
-    if weights:
-        model.load_state_dict(torch.load(weights))
-    else:
-        model_init(model)
     
     n_ite = len(train_loader)
     df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss'], index=range(n_ite))
