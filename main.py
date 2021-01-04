@@ -148,6 +148,7 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
     
     n_ite = len(train_loader)
     df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss'], index=range(n_ite))
+    n_processed = 0
     # TRAINING
     model.train()
     for ite, (data, target) in enumerate(tqdm(train_loader)):
@@ -163,7 +164,8 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         optimizer.step()
         scheduler.step(df['training loss'][ite])
-        if ite > 0 and (ite%val_step == 0 or ite == n_ite-1): # VALIDATION
+        n_processed += data.shape[0]
+        if ite > 0 and (n_processed%val_step == 0 or ite == n_ite-1): # VALIDATION
             df['validation loss'][ite] = 0.
             model.eval()
             for data, target in val_loader:
