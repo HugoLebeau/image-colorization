@@ -107,9 +107,9 @@ class Zhang16(nn.Module):
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
+            nn.ReLU(inplace=True)
             )
+        self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
         if weights:
             self.load_state_dict(torch.load(weights))
@@ -125,7 +125,8 @@ class Zhang16(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         x = self.conv7(x)
-        z = self.softmax(self.conv8(x)) # a*b* probability distribution
+        x = self.conv8(x)
+        z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
 class Su20Fusion(nn.Module):
