@@ -1,4 +1,5 @@
 __pycache__
+datasets/COCO-Stuff
 datasets/Places205
 datasets/directory_Places205.csv
 outputs
