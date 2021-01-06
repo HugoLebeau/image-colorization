@@ -115,6 +115,10 @@ class Zhang16(nn.Module):
             self.load_state_dict(torch.load(weights))
         else:
             model_init(self)
+        for param in self.parameters():
+            param.requires_grad = False
+        for param in self.conv_out.parameters():
+            param.requires_grad = True
     
     def forward(self, img_l):
         x = (img_l-50.)/100. # normalize L* input
