@@ -164,7 +164,7 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         optimizer.step()
         before_val -= data.shape[0]
-        if ite > 0 and (before_val <= 0 or ite == n_ite-1): # VALIDATION
+        if before_val <= 0 or ite == n_ite-1: # VALIDATION
             before_val = val_step
             df['validation loss'][ite] = 0.
             model.eval()
