@@ -11,7 +11,7 @@ from loss_functions import MCE, smoothL1
 from models import Zhang16, Su20, Su20Zhang16Instance
 from transforms import data_transform
 from utils import ab2z, logdistrib_smoothed, extract
-from datasets.datasets import Places205
+from datasets.datasets import COCOStuff, Places205
 
 def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transform=data_transform):
     '''
@@ -49,6 +49,9 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
     '''
     if dataset_name == "Places205":
         dataset = Places205('datasets/', transform=transform, maxsize=max_size)
+        proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
+    elif dataset_name == "COCO-Stuff":
+        dataset = COCOStuff('datasets/', transform=transform, maxsize=max_size)
         proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
     else:
         raise NameError(dataset_name)
@@ -105,8 +108,7 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             model.cuda()
         else:
             print("Using CPU.")
-        optimizer = optim.Adam(model.parameters(), lr=3e-5, betas=(0.9, 0.99), weight_decay=1e-3)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
+        optimizer = optim.Adam(model.parameters(), lr=1e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
@@ -121,7 +123,6 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
         else:
             print("Using CPU.")
         optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
@@ -140,15 +141,14 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             model.cuda()
         else:
             print("Using CPU.")
-        optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10)
+        optimizer = optim.Adam(model.parameters(), lr=2e-5, betas=(0.99, 0.999), weight_decay=1e-3)
         criterion = smoothL1
     else:
         raise NameError(model_name)
     
     n_ite = len(train_loader)
     df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss'], index=range(n_ite))
-    n_processed = 0
+    before_val = val_step
     # TRAINING
     model.train()
     for ite, (data, target) in enumerate(tqdm(train_loader)):
@@ -163,9 +163,9 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         optimizer.step()
-        scheduler.step(df['training loss'][ite])
-        n_processed += data.shape[0]
-        if ite > 0 and (n_processed%val_step == 0 or ite == n_ite-1): # VALIDATION
+        before_val -= data.shape[0]
+        if ite > 0 and (before_val <= 0 or ite == n_ite-1): # VALIDATION
+            before_val = val_step
             df['validation loss'][ite] = 0.
             model.eval()
             for data, target in val_loader:
