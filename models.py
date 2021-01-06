@@ -40,7 +40,7 @@ def model_init(model):
     print("Weights initialized.")
 
 class Zhang16(nn.Module):
-    def __init__(self, q=q, weights=None):
+    def __init__(self, q=q, weights=None, fine_tune=False, init_weights=True):
         super(Zhang16, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
@@ -111,14 +111,17 @@ class Zhang16(nn.Module):
             )
         self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
-        if weights:
-            self.load_state_dict(torch.load(weights))
-        else:
+        if init_weights:
             model_init(self)
-        for param in self.parameters():
-            param.requires_grad = False
-        for param in self.conv_out.parameters():
-            param.requires_grad = True
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
+        if fine_tune:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.conv_out.parameters():
+                param.requires_grad = True
     
     def forward(self, img_l):
         x = (img_l-50.)/100. # normalize L* input
@@ -134,7 +137,7 @@ class Zhang16(nn.Module):
         return z.transpose(-3, -2).transpose(-2, -1)
 
 class Su20Fusion(nn.Module):
-    def __init__(self, c):
+    def __init__(self, c, weights=None, init_weights=True):
         super(Su20Fusion, self).__init__()
         self.background_conv = nn.Sequential(
             nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
@@ -153,6 +156,12 @@ class Su20Fusion(nn.Module):
             nn.ReLU(inplace=True),
             )
         self.softmax = nn.Softmax(dim=1)
+        if init_weights:
+            model_init(self)
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
 
     def forward(self, background, instance, box):
         background_weight = self.background_conv(background)
@@ -164,7 +173,7 @@ class Su20Fusion(nn.Module):
         return fused
 
 class Su20Zhang16Instance(nn.Module):
-    def __init__(self, q=q, return_features=False, min_score=0.5, weights=None, freeze=False):
+    def __init__(self, q=q, return_features=False, min_score=0.5, weights=None, freeze=False, init_weights=True):
         super(Su20Zhang16Instance, self).__init__()
         self.return_features = return_features
         self.min_score = min_score
@@ -238,10 +247,12 @@ class Su20Zhang16Instance(nn.Module):
             )
         self.conv_out = nn.Conv2d(256, q, kernel_size=1, stride=1, padding=0, bias=True)
         self.softmax = nn.Softmax(dim=1)
-        if weights:
-            self.load_state_dict(torch.load(weights))
-        else:
+        if init_weights:
             model_init(self)
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
         if freeze:
             for param in self.parameters():
                 param.requires_grad = False
@@ -279,7 +290,7 @@ class Su20Zhang16Instance(nn.Module):
             return color, box
 
 class Su20Zhang16Background(nn.Module):
-    def __init__(self, q=q, weights=None, freeze=False):
+    def __init__(self, q=q, weights=None, freeze=False, init_weights=True):
         super(Su20Zhang16Background, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
@@ -361,10 +372,12 @@ class Su20Zhang16Background(nn.Module):
         self.fusion6 = Su20Fusion(512)
         self.fusion7 = Su20Fusion(512)
         self.fusion8 = Su20Fusion(256)
-        if weights:
-            self.load_state_dict(torch.load(weights))
-        else:
+        if init_weights:
             model_init(self)
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
     
     def forward(self, img_l, feature, box):
         x = (img_l-50.)/100. # normalize L* input
@@ -383,15 +396,17 @@ class Su20Zhang16Background(nn.Module):
         return z.transpose(-3, -2).transpose(-2, -1)
 
 class Su20(nn.Module):
-    def __init__(self, q=q, weights=None):
+    def __init__(self, q=q, weights=None, init_weights=True):
         super(Su20, self).__init__()
         self.resize = transforms.Resize((256, 256))
-        self.instance_colorization = Su20Zhang16Instance(q=q, return_features=True, freeze=True)
-        self.background_colorization = Su20Zhang16Background(q=q, freeze=True)
-        if weights:
-            self.load_state_dict(torch.load(weights))
-        else:
+        self.instance_colorization = Su20Zhang16Instance(q=q, return_features=True, freeze=True, init_weights=False)
+        self.background_colorization = Su20Zhang16Background(q=q, freeze=True, init_weights=False)
+        if init_weights:
             model_init(self)
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
     
     def forward(self, img_l):
         feature, box = self.instance_colorization(img_l)
