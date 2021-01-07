@@ -62,7 +62,7 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     return train_loader, val_loader, proba_ab
 
-def training(model_name, weights, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False):
+def training(model_name, weights, lr, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False):
     '''
     Load a model and train it with the given data.
 
@@ -73,6 +73,8 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
     weights : str
         Path to weights for the initialisation of the model. If None, weights
         are randomly initialized
+    lr : float
+        Learning rate. If None, the default learning rate is chosen.
     train_loader : torch.utils.data.dataloader.DataLoader
         Data loader of the training set.
     val_loader : torch.utils.data.dataloader.DataLoader
@@ -108,7 +110,10 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             model.cuda()
         else:
             print("Using CPU.")
-        optimizer = optim.Adam(model.parameters(), lr=1e-5, betas=(0.9, 0.99), weight_decay=1e-3)
+        if lr:
+            optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=1e-3)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=1e-5, betas=(0.9, 0.99), weight_decay=1e-3)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
@@ -122,7 +127,10 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             model.cuda()
         else:
             print("Using CPU.")
-        optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
+        if lr:
+            optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.99, 0.999), weight_decay=1e-3)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=5e-5, betas=(0.99, 0.999), weight_decay=1e-3)
         w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
@@ -141,7 +149,10 @@ def training(model_name, weights, train_loader, val_loader, val_size, val_step, 
             model.cuda()
         else:
             print("Using CPU.")
-        optimizer = optim.Adam(model.parameters(), lr=2e-5, betas=(0.99, 0.999), weight_decay=1e-3)
+        if lr:
+            optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.99, 0.999), weight_decay=1e-3)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=2e-5, betas=(0.99, 0.999), weight_decay=1e-3)
         criterion = smoothL1
     else:
         raise NameError(model_name)
@@ -214,6 +225,8 @@ if __name__ == '__main__':
                         help="Path to weights for the initialisation of the model (default: None).")
     parser.add_argument('--batch-size', type=int, default=32, metavar="BATCHSIZE",
                         help="Training batch size (default: 32).")
+    parser.add_argument('--lr', type=int, default=None, metavar="LR",
+                        help="Change the default learning rate (default: None).")
     parser.add_argument('--val-size', type=int, default=10000, metavar='VALSIZE',
                         help="Size of the validation set (default: 10 000).")
     parser.add_argument('--val-step', type=float, default=100000, metavar='VALSIZE',
@@ -231,5 +244,5 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     
     train_loader, val_loader, proba_ab = load_dataset(args.dataset, args.val_size, args.batch_size, args.max_size, args.n_threads)
-    model, df = training(args.model, args.weights, train_loader, val_loader, args.val_size, args.val_step, proba_ab, use_cuda)
+    model, df = training(args.model, args.weights, args.lr, train_loader, val_loader, args.val_size, args.val_step, proba_ab, use_cuda)
     save('outputs/', args, model, df)
