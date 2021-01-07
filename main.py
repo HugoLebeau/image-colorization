@@ -225,7 +225,7 @@ if __name__ == '__main__':
                         help="Path to weights for the initialisation of the model (default: None).")
     parser.add_argument('--batch-size', type=int, default=32, metavar="BATCHSIZE",
                         help="Training batch size (default: 32).")
-    parser.add_argument('--lr', type=int, default=None, metavar="LR",
+    parser.add_argument('--lr', type=float, default=None, metavar="LR",
                         help="Change the default learning rate (default: None).")
     parser.add_argument('--val-size', type=int, default=10000, metavar='VALSIZE',
                         help="Size of the validation set (default: 10 000).")
