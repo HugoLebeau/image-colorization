@@ -165,11 +165,14 @@ class Su20Fusion(nn.Module):
 
     def forward(self, background, instance, box):
         background_weight = self.background_conv(background)
-        instance_weight = [self.instance_conv(i) for i in instance]
+        instance_weight = [self.instance_conv(i) if i is not None else None for i in instance]
         weight_map = zero_padding(background_weight, instance_weight, box)
         fused = self.softmax(background_weight)*background
         for n in range(fused.shape[0]):
-            fused[n] += torch.sum(self.softmax(weight_map[n])*instance[n], dim=0)
+            if instance[n] is None:
+                fused[n] = background[n]
+            else:
+                fused[n] += torch.sum(self.softmax(weight_map[n])*instance[n], dim=0)
         return fused
 
 class Su20Zhang16Instance(nn.Module):
@@ -266,15 +269,20 @@ class Su20Zhang16Instance(nn.Module):
         feature = [list() for _ in range(8)]
         color = list()
         for x0 in instance:
-            x1 = self.conv1(x0)
-            x2 = self.conv2(x1)
-            x3 = self.conv3(x2)
-            x4 = self.conv4(x3)
-            x5 = self.conv5(x4)
-            x6 = self.conv6(x5)
-            x7 = self.conv7(x6)
-            x8 = self.conv8(x7)
-            z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
+            if x0 is None:
+                x1, x2, x3, x4, x5, x6, x7, x8 = None, None, None, None, None, None, None, None
+                z = None
+            else:
+                x1 = self.conv1(x0)
+                x2 = self.conv2(x1)
+                x3 = self.conv3(x2)
+                x4 = self.conv4(x3)
+                x5 = self.conv5(x4)
+                x6 = self.conv6(x5)
+                x7 = self.conv7(x6)
+                x8 = self.conv8(x7)
+                z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
+                z = z.transpose(-3, -2).transpose(-2, -1)
             feature[0].append(x1)
             feature[1].append(x2)
             feature[2].append(x3)
@@ -283,7 +291,7 @@ class Su20Zhang16Instance(nn.Module):
             feature[5].append(x6)
             feature[6].append(x7)
             feature[7].append(x8)
-            color.append(z.transpose(-3, -2).transpose(-2, -1))
+            color.append(z)
         if self.return_features:
             return feature, box
         else:

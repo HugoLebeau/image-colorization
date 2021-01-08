@@ -114,15 +114,18 @@ def zero_padding(background_weight, instance_weight, box):
     n, _, h, w = background_weight.shape
     weight_map = list()
     for i in range(n):
-        weight_map.append(list())
-        for j in range(box[i].shape[0]):
-            # Resize every instance weights to their scale in the background
-            size = (box[i][j, 3]-box[i][j, 1], box[i][j, 2]-box[i][j, 0])
-            resized = torch.nn.functional.interpolate(instance_weight[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
-            # Pad with zeros
-            pad = (box[i][j, 0], w-box[i][j, 0]-resized.shape[-1], box[i][j, 3]-resized.shape[-2], h-box[i][j, 3])
-            weight_map[i].append(torch.nn.functional.pad(resized, pad, "constant", 0))
-        weight_map[i] = torch.cat(weight_map[i])
+        if box[i].shape[0] > 0:
+            weight_map.append(list())
+            for j in range(box[i].shape[0]):
+                # Resize every instance weights to their scale in the background
+                size = (box[i][j, 3]-box[i][j, 1], box[i][j, 2]-box[i][j, 0])
+                resized = torch.nn.functional.interpolate(instance_weight[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
+                # Pad with zeros
+                pad = (box[i][j, 0], w-box[i][j, 0]-resized.shape[-1], box[i][j, 3]-resized.shape[-2], h-box[i][j, 3])
+                weight_map[i].append(torch.nn.functional.pad(resized, pad, "constant", 0))
+            weight_map[i] = torch.cat(weight_map[i])
+        else:
+            weight_map.append(None)
     return weight_map
 
 def extract(image, box, resize):
@@ -147,9 +150,12 @@ def extract(image, box, resize):
     n = len(box)
     instance = list()
     for i in range(n):
-        instance.append(list())
-        for j in range(box[i].shape[0]):
-            extracted = image[i, :, box[i][j, 1]:box[i][j, 3], box[i][j, 0]:box[i][j,2]]
-            instance[i].append(resize(extracted).unsqueeze(dim=0))
-        instance[i] = torch.cat(instance[i], dim=0)
+        if box[i].shape[0] > 0:
+            instance.append(list())
+            for j in range(box[i].shape[0]):
+                extracted = image[i, :, box[i][j, 1]:box[i][j, 3], box[i][j, 0]:box[i][j,2]]
+                instance[i].append(resize(extracted).unsqueeze(dim=0))
+            instance[i] = torch.cat(instance[i], dim=0)
+        else:
+            instance.append(None)
     return instance

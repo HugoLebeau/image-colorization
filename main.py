@@ -133,8 +133,9 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
             target_instance = extract(target.cpu(), box, resize)
             loss = 0.
             for i, img in enumerate(target_instance):
-                z_target = ab2z(img, k=5, sigma=5.)
-                loss += MCE(prop[i].cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
+                if prop[i] is not None:
+                    z_target = ab2z(img, k=5, sigma=5.)
+                    loss += MCE(prop[i].cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
             return loss
     elif model_name == "Su20":
         model = Su20(weights=weights)
