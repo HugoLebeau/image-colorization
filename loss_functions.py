@@ -21,9 +21,8 @@ def MCE(prop, target, weights=1.):
     '''
     print('a', torch.where(torch.isnan(torch.log(prop))))
     print('b', torch.where(torch.isnan(target)))
-    print('c', torch.where(torch.isnan(weights)))
+    print('c', torch.where(torch.isnan(target*torch.log(prop))))
     print('d', torch.where(torch.isnan(torch.sum(target*torch.log(prop), axis=-1))))
-    print('e', torch.where(torch.isnan(weights*torch.sum(target*torch.log(prop), axis=-1))))
     return -torch.sum(weights*torch.sum(target*torch.log(prop), axis=-1), dim=(-1, -2))
 
 def smoothL1(prop, target, delta=1.):
