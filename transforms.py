@@ -8,6 +8,23 @@ mat_lab2rgb = torch.inverse(mat_rgb2lab)
 
 d65_2 = torch.tensor([0.95047, 1.00000, 1.08883]) # CIE Standard Illuminant D65, 2° observer
 
+def clip(x):
+    '''
+    Project a tensor's values on [0, 1] (inplace).
+
+    Parameters
+    ----------
+    x : torch.Tensor
+
+    Returns
+    -------
+    x : torch.Tensor
+
+    '''
+    x[x > 1.] = 1.
+    x[x < 0.] = 0.
+    return x
+
 def rgb2lab(img_rgb):
     '''
     RGB to L*a*b* conversion.
@@ -70,7 +87,7 @@ def lab2rgb(img_lab):
     mask = img_rgb > 0.0031308
     img_rgb[mask] = 1.055*(img_rgb[mask]**(1./2.4))-0.055
     img_rgb[~mask] *= 12.92
-    return img_rgb
+    return clip(img_rgb)
 
 def rgb2l(img_rgb):
     '''
