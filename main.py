@@ -163,7 +163,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         df['lr'][ite] = optimizer.param_groups[0]['lr']
         optimizer.zero_grad()
         output = model(data)
-        print(torch.where(torch.isnan(output)))
+        print([torch.where(torch.isnan(z)) for z in output[0]])
         loss = criterion(output, target)
         print(loss)
         if np.isnan(loss.data.item()):
