@@ -163,6 +163,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         df['lr'][ite] = optimizer.param_groups[0]['lr']
         optimizer.zero_grad()
         output = model(data)
+        print(output)
         loss = criterion(output, target)
         print(loss)
         if np.isnan(loss.data.item()):
