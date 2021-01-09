@@ -82,10 +82,10 @@ def evaluation(model_name, weights, data_loader, use_cuda=False):
     if model_name == "Zhang16":
         model = Zhang16(weights=weights)
         resize = transforms.Resize((256, 256))
-        process_output = lambda output, data: lab2rgb(torch.cat((data, resize(z2ab(output))), axis=1))
+        process_output = lambda output, data: lab2rgb(torch.cat((data.cpu(), resize(z2ab(output.cpu()))), axis=1))
     elif model_name == "Su20":
         model = Su20(weights=weights)
-        process_output = lambda output, data: lab2rgb(torch.cat((data, output), axis=1))
+        process_output = lambda output, data: lab2rgb(torch.cat((data, output), axis=1).cpu())
     else:
         raise NameError(model_name)
     if use_cuda:
@@ -102,7 +102,7 @@ def evaluation(model_name, weights, data_loader, use_cuda=False):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         output = model(data)
-        images_true = lab2rgb(torch.cat((data, target), axis=1))
+        images_true = lab2rgb(torch.cat((data, target), axis=1).cpu())
         images_test = process_output(output, data)
         lpips_values = lpips_loss(images_true*2.-1., images_test*2.-1.)
         for i, name in enumerate(names):
@@ -139,8 +139,8 @@ def save(path, args, df):
 
     '''
     now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    df.to_csv(path+'eval'+args.model+'_'+now+'.csv')
-    pd.Series(vars(args)).to_csv(path+'eval'+args.model+'_'+now+'.txt', header=0)
+    df.to_csv(path+'eval_'+args.model+'_'+now+'.csv')
+    pd.Series(vars(args)).to_csv(path+'eval_'+args.model+'_'+now+'.txt', header=0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Automatic image colorization")
