@@ -154,7 +154,8 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         raise NameError(model_name)
     
     n_ite = len(train_loader)
-    df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss'], index=range(n_ite))
+    df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss', 'optimizer step'], index=range(n_ite))
+    df['optimizer step'] = False
     before_val = val_step
     # TRAINING
     model.train()
@@ -170,6 +171,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters()]): # if the gradients are not nan
+            df['optimizer step'][ite] = True
             optimizer.step()
         before_val -= data.shape[0]
         if before_val <= 0 or ite == n_ite-1: # VALIDATION
