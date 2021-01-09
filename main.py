@@ -168,7 +168,8 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         print(loss.data.item())
         if np.isnan(loss.data.item()):
             break
-        loss.backward()
+        if not np.any([torch.any(torch.isnan(param)).item() for param in model.parameters()]):
+            loss.backward()
         print(1)
         print([torch.any(torch.isnan(param.grad)) for param in model.parameters()])
         df['training loss'][ite] = loss.data.item()/data.shape[0]
