@@ -30,7 +30,7 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
     n_threads : int
         How many subprocesses to use for data loading.
     transform : callable, optional
-        Transformation applied to the data. The default is None.
+        Transformation applied to the data. The default is data_transform.
 
     Raises
     ------
@@ -75,7 +75,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         Name of the model to be trained.
     weights : str
         Path to weights for the initialisation of the model. If None, weights
-        are randomly initialized
+        are randomly initialized.
     lr : float
         Learning rate.
     train_loader : torch.utils.data.dataloader.DataLoader
@@ -100,10 +100,8 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
     -------
     model : torch.nn.Module
         Trained model.
-    training_loss : torch.Tensor
-        Training loss at each iteration.
-    validation_loss : torch.Tensor
-        Validation loss.
+    df : pandas.DataFrame
+        Data frame with the training data.
 
     '''
     if model_name == "Zhang16":
@@ -189,8 +187,8 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
 
 def save(path, args, model, df):
     '''
-    Save the model weights in a pth file and the training/validations losses
-    in a csv file.
+    Save the model weights in a pth file, the training data in a csv file and
+    the arguments in a txt file.
 
     Parameters
     ----------
@@ -201,7 +199,7 @@ def save(path, args, model, df):
     model : torch.nn.Module
         Model whose weights are to be saved.
     df : pandas.DataFrame
-        Data frame with information on the training.
+        Data frame with the training data.
 
     Returns
     -------
