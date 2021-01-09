@@ -11,7 +11,7 @@ from loss_functions import MCE, smoothL1
 from models import Zhang16, Su20, Su20Zhang16Instance
 from transforms import data_transform
 from utils import ab2z, logdistrib_smoothed, extract
-from datasets.datasets import COCOStuff, Places205
+from datasets.datasets import COCOStuff, Places205, SUN2012
 
 def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transform=data_transform):
     '''
@@ -52,6 +52,9 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
         proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
     elif dataset_name == "COCO-Stuff":
         dataset = COCOStuff('datasets/', transform=transform, maxsize=max_size)
+        proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
+    elif dataset_name == "SUN2012":
+        dataset = SUN2012('datasets/', transform=transform, maxsize=max_size)
         proba_ab = torch.exp(logdistrib_smoothed(torch.tensor(np.loadtxt('datasets/logdistrib_Places205.csv'))))
     else:
         raise NameError(dataset_name)
