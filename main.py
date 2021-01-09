@@ -165,9 +165,9 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
-        if np.isnan(loss.data.item()):
-            break
-        loss.backward()
+        print(loss.data.item())
+        if not np.isnan(loss.data.item()):
+            loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         optimizer.step()
         before_val -= data.shape[0]
