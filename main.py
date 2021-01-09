@@ -168,12 +168,12 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         print(loss.data.item())
         if np.isnan(loss.data.item()):
             break
-        if not np.any([torch.any(torch.isnan(param)).item() for param in model.parameters()]):
-            loss.backward()
+        loss.backward()
         print(1)
         print([torch.any(torch.isnan(param.grad)) for param in model.parameters()])
         df['training loss'][ite] = loss.data.item()/data.shape[0]
-        optimizer.step()
+        if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters()]):
+            optimizer.step()
         print(2)
         print([torch.any(torch.isnan(param)) for param in model.parameters()])
         before_val -= data.shape[0]
