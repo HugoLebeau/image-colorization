@@ -176,10 +176,11 @@ class Su20Fusion(nn.Module):
         return fused
 
 class Su20Zhang16Instance(nn.Module):
-    def __init__(self, q=q, return_features=False, min_score=0.5, weights=None, freeze=False, init_weights=True):
+    def __init__(self, q=q, return_features=False, min_score=0.5, max_box=8, weights=None, freeze=False, init_weights=True):
         super(Su20Zhang16Instance, self).__init__()
         self.return_features = return_features
         self.min_score = min_score
+        self.max_box = max_box
         self.resize = transforms.Resize((256, 256))
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
@@ -263,7 +264,7 @@ class Su20Zhang16Instance(nn.Module):
     def forward(self, img_l):
         x = img_l/100. # normalize L* input (1/2)
         mask = maskRCNN(x)
-        box = [m['boxes'][m['scores'] > self.min_score].round().int() for m in mask]
+        box = [m['boxes'][m['scores'] > self.min_score][:self.max_box].round().int() for m in mask]
         x -= 0.5 # normalize L* input (2/2)
         instance = extract(x, box, self.resize)
         feature = [list() for _ in range(8)]
