@@ -154,4 +154,4 @@ data_transform = transforms.Compose(
      transforms.Resize((256, 256)),
      transforms.ToTensor(),
      rgb2lab,
-     lambda img_lab: (img_lab[0].unsqueeze(dim=0), img_lab[[1, 2]])])
+     lambda img_lab: (img_lab[[0]], img_lab[[1, 2]])])
