@@ -1,6 +1,6 @@
 import torch
 
-def MCE(prop, target, weights=1.):
+def MCE(prop, target, weights=1., eps=1e-42):
     '''
     Weighted multinomial cross entropy loss.
 
@@ -12,6 +12,9 @@ def MCE(prop, target, weights=1.):
         Target distribution.
     weights : float or torch.Tensor, shape (..., H, W)
         Weights.
+    eps : float, optional
+        Small value added before computing the log to avoid NaNs. The default
+        is 1e-42.
 
     Returns
     -------
@@ -19,7 +22,7 @@ def MCE(prop, target, weights=1.):
         The weighted multinomial cross entropy loss.
 
     '''
-    return -torch.sum(weights*torch.sum(target*torch.log(prop+1e-42), axis=-1), dim=(-1, -2))
+    return -torch.sum(weights*torch.sum(target*torch.log(prop+eps), axis=-1), dim=(-1, -2))
 
 def smoothL1(prop, target, delta=1.):
     '''
