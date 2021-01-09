@@ -22,6 +22,9 @@ def MCE(prop, target, weights=1., eps=1e-42):
         The weighted multinomial cross entropy loss.
 
     '''
+    print('a', torch.where(torch.isnan(prop)))
+    print('b', torch.where(torch.isnan(target)))
+    print('c', torch.where(torch.isnan(torch.sum(target*torch.log(prop+eps), axis=-1))))
     return -torch.sum(weights*torch.sum(target*torch.log(prop+eps), axis=-1), dim=(-1, -2))
 
 def smoothL1(prop, target, delta=1.):
