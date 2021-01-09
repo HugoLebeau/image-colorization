@@ -165,17 +165,12 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
-        print(loss.data.item())
         if np.isnan(loss.data.item()):
             break
         loss.backward()
-        print(1)
-        print([torch.any(torch.isnan(param.grad)) for param in model.parameters()])
         df['training loss'][ite] = loss.data.item()/data.shape[0]
-        if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters()]):
+        if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters()]): # if the gradients are not nan
             optimizer.step()
-        print(2)
-        print([torch.any(torch.isnan(param)) for param in model.parameters()])
         before_val -= data.shape[0]
         if before_val <= 0 or ite == n_ite-1: # VALIDATION
             before_val = val_step
