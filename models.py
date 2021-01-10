@@ -11,16 +11,23 @@ for param in maskRCNN.parameters():
     param.requires_grad = False
 maskRCNN.eval()
 
-def model_init(model):
+def model_init(model, mode='xavier'):
     '''
-    Initialise the weights of a network with Xavier initialisation for
-    convolutional and linear layers. Batch norm layers are initialised with a
-    normal distribution. All biases are set to 0.
-    
+    Initialise the weights of a network with Xavier/constant initialisation
+    for convolutional and linear layers. Batch norm layers are initialised with
+    a normal distribution. All biases are set to 0.
+
     Parameters
     ----------
     model : torch.nn.Module
         Neural network.
+    mode : str, optional
+        Type of initialisation (Xavier / constant). The default is 'xavier'.
+
+    Raises
+    ------
+    NameError
+        If the mode is not recognised
 
     Returns
     -------
@@ -30,7 +37,12 @@ def model_init(model):
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
-            nn.init.xavier_normal_(m.weight.data, gain=0.02)
+            if mode == 'xavier':
+                nn.init.xavier_normal_(m.weight.data, gain=0.02)
+            elif mode == 'constant':
+                nn.init.constant_(m.weight.data, 1e-2)
+            else:
+                raise NameError(mode)
             if hasattr(m, 'bias') and m.bias is not None:
                 nn.init.constant_(m.bias.data, 0.)
         elif classname.find('BatchNorm') != -1:
@@ -410,7 +422,7 @@ class Su20(nn.Module):
         self.instance_colorization = Su20Zhang16Instance(q=q, return_features=True, freeze=True, init_weights=False)
         self.background_colorization = Su20Zhang16Background(q=q, freeze=True, init_weights=False)
         if init_weights:
-            model_init(self)
+            model_init(self, mode='constant')
         if weights: # allows incomplete state dict
             new_weights = self.state_dict()
             new_weights.update(torch.load(weights))
