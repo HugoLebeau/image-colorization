@@ -148,22 +148,22 @@ class Zhang16(nn.Module):
         return z.transpose(-3, -2).transpose(-2, -1)
 
 class Su20Fusion(nn.Module):
-    def __init__(self, c, inner_ch=64, weights=None, init_weights=True):
+    def __init__(self, c, inner_ch=16, weights=None, init_weights=True):
         super(Su20Fusion, self).__init__()
         self.background_conv = nn.Sequential(
-            nn.Conv2d(c, inner_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inner_ch, inner_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inner_ch, 1, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 1, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
             )
         self.instance_conv = nn.Sequential(
-            nn.Conv2d(c, inner_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(c, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inner_ch, inner_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inner_ch, 1, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 1, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
             )
         self.softmax = nn.Softmax(dim=1)
