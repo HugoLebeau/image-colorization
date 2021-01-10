@@ -37,7 +37,6 @@ def model_init(model):
             nn.init.normal_(m.weight.data, 1., 0.02)
             nn.init.constant_(m.bias.data, 0.)
     model.apply(init_func)
-    print("Weights initialized.")
 
 class Zhang16(nn.Module):
     def __init__(self, q=q, weights=None, fine_tune=False, init_weights=True):
