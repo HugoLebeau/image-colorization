@@ -171,9 +171,9 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         df['lr'][ite] = optimizer.param_groups[0]['lr']
         optimizer.zero_grad()
         output = model(data)
-        print(z2ab(output.cpu())[0])
         loss = criterion(output, target)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1e10)
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         print(loss.data.item())
         count_nan += 1
