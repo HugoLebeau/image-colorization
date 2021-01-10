@@ -263,8 +263,8 @@ class Su20Zhang16Instance(nn.Module):
     def forward(self, img_l):
         x = img_l/100. # normalize L* input (1/2)
         mask = maskRCNN(x)
-        box = [m['boxes'][m['scores'] > self.min_score][:self.max_box].round().int() for m in mask]
-        box = [b[(b[:, 0] != b[:, 2]) & (b[:, 1] != b[:, 3])] for b in box] # remove empty boxes
+        box = [m['boxes'][m['scores'] > self.min_score] for m in mask]
+        box = [b[(b[:, 2]-b[:, 0] >= 8.) & (b[:, 3]-b[:, 1] >= 8.)][:self.max_box].round().int() for b in box] # keep only boxes that are at least 8x8
         x -= 0.5 # normalize L* input (2/2)
         instance = extract(x, box, self.resize)
         feature = [list() for _ in range(8)]
