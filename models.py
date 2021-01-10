@@ -422,7 +422,7 @@ class Su20(nn.Module):
         self.instance_colorization = Su20Zhang16Instance(q=q, return_features=True, freeze=True, init_weights=False)
         self.background_colorization = Su20Zhang16Background(q=q, freeze=True, init_weights=False)
         if init_weights:
-            model_init(self, mode='constant')
+            model_init(self)
         if weights: # allows incomplete state dict
             new_weights = self.state_dict()
             new_weights.update(torch.load(weights))
