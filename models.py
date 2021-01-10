@@ -176,8 +176,7 @@ class Su20Fusion(nn.Module):
 
     def forward(self, background, instance, box):
         background_weight = self.background_conv(background)
-        # instance_weight = [self.instance_conv(i) if i is not None else None for i in instance]
-        instance_weight = [self.instance_conv(i) for i in instance]
+        instance_weight = [self.instance_conv(i) if i is not None else None for i in instance]
         weight_map = zero_padding(background_weight, instance_weight, box)
         fused = self.softmax(background_weight)*background
         for n in range(fused.shape[0]):
@@ -422,7 +421,6 @@ class Su20Zhang16Background(nn.Module):
         # x = self.conv6(x)
         # x = self.conv7(x)
         # x = self.conv8(x)
-        # x = self.fusion8(self.conv8(x), feature[7], box4)
         z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
