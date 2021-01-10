@@ -10,7 +10,7 @@ from tqdm import tqdm
 from loss_functions import MCE, smoothL1
 from models import Zhang16, Su20, Su20Zhang16Instance
 from transforms import data_transform
-from utils import ab2z, logdistrib_smoothed, extract
+from utils import ab2z, z2ab, logdistrib_smoothed, extract
 from datasets.datasets import COCOStuff, Places205, SUN2012
 
 def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transform=data_transform):
@@ -149,7 +149,10 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         else:
             print("Using CPU.")
         optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.99, 0.999), weight_decay=1e-3)
-        criterion = smoothL1
+        resize = transforms.Resize((64, 64))
+        def criterion(output, target):
+            prop = z2ab(output.cpu())
+            return smoothL1(prop, resize(target.cpu()))
     else:
         raise NameError(model_name)
     

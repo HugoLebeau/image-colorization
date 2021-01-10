@@ -406,7 +406,6 @@ class Su20Zhang16Background(nn.Module):
 class Su20(nn.Module):
     def __init__(self, q=q, weights=None, init_weights=True):
         super(Su20, self).__init__()
-        self.resize = transforms.Resize((256, 256))
         self.instance_colorization = Su20Zhang16Instance(q=q, return_features=True, freeze=True, init_weights=False)
         self.background_colorization = Su20Zhang16Background(q=q, freeze=True, init_weights=False)
         if init_weights:
@@ -419,4 +418,4 @@ class Su20(nn.Module):
     def forward(self, img_l):
         feature, box = self.instance_colorization(img_l)
         z = self.background_colorization(img_l, feature, box)
-        return self.resize(z2ab(z))
+        return z
