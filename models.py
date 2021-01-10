@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from utils import q, z2ab, zero_padding, extract
+from utils import q, zero_padding, extract
 from torchvision import transforms
 from torchvision.models.detection import maskrcnn_resnet50_fpn
 
