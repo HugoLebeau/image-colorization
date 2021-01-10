@@ -430,6 +430,5 @@ class Su20(nn.Module):
     
     def forward(self, img_l):
         feature, box = self.instance_colorization(img_l)
-        print([torch.min(f) for feature_i in feature for f in feature_i])
         z = self.background_colorization(img_l, feature, box)
         return z

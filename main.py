@@ -171,6 +171,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         df['lr'][ite] = optimizer.param_groups[0]['lr']
         optimizer.zero_grad()
         output = model(data)
+        print(z2ab(output.cpu())[0])
         loss = criterion(output, target)
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
