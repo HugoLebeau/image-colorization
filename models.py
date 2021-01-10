@@ -405,14 +405,22 @@ class Su20Zhang16Background(nn.Module):
         box2 = [b//2 for b in box]
         box4 = [b//4 for b in box]
         box8 = [b//8 for b in box]
-        x = self.fusion1(self.conv1(x), feature[0], box2)
-        x = self.fusion2(self.conv2(x), feature[1], box4)
-        x = self.fusion3(self.conv3(x), feature[2], box8)
-        x = self.fusion4(self.conv4(x), feature[3], box8)
-        x = self.fusion5(self.conv5(x), feature[4], box8)
-        x = self.fusion6(self.conv6(x), feature[5], box8)
-        x = self.fusion7(self.conv7(x), feature[6], box8)
-        x = self.fusion8(self.conv8(x), feature[7], box4)
+        # x = self.fusion1(self.conv1(x), feature[0], box2)
+        # x = self.fusion2(self.conv2(x), feature[1], box4)
+        # x = self.fusion3(self.conv3(x), feature[2], box8)
+        # x = self.fusion4(self.conv4(x), feature[3], box8)
+        # x = self.fusion5(self.conv5(x), feature[4], box8)
+        # x = self.fusion6(self.conv6(x), feature[5], box8)
+        # x = self.fusion7(self.conv7(x), feature[6], box8)
+        # x = self.fusion8(self.conv8(x), feature[7], box4)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.conv5(x)
+        x = self.conv6(x)
+        x = self.conv7(x)
+        x = self.conv8(x)
         z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
