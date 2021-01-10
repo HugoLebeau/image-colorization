@@ -105,7 +105,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
 
     '''
     if model_name == "Zhang16":
-        model = Zhang16(weights=weights, fine_tune=True)
+        model = Zhang16(weights=weights)
         if use_cuda:
             print("Using GPU.")
             model.cuda()
