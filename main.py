@@ -176,7 +176,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         print(loss.data.item())
         count_nan += 1
-        print([torch.max(param.grad).item() for param in model.parameters() if param.grad is not None])
+        print([torch.max(torch.abs(param.grad)).item() for param in model.parameters() if param.grad is not None])
         # print([torch.any(torch.isnan(param.grad)).item() for param in model.parameters() if param.grad is not None])
         if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters() if param.grad is not None]): # if the gradients are not nan
             count_nan = 0
