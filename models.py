@@ -187,7 +187,7 @@ class Su20Fusion(nn.Module):
         return fused
 
 class Su20Zhang16Instance(nn.Module):
-    def __init__(self, q=q, return_features=False, min_score=0.5, max_box=8, weights=None, freeze=False, init_weights=True):
+    def __init__(self, q=q, return_features=False, min_score=0.5, max_box=1, weights=None, freeze=False, init_weights=True):
         super(Su20Zhang16Instance, self).__init__()
         self.return_features = return_features
         self.min_score = min_score
