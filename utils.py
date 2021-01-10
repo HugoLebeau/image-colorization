@@ -117,6 +117,7 @@ def zero_padding(background_weight, instance_weight, box):
         if box[i].shape[0] > 0:
             weight_map.append(list())
             for j in range(box[i].shape[0]):
+                print(box[i][j])
                 # Resize every instance weights to their scale in the background
                 size = (box[i][j, 3]-box[i][j, 1], box[i][j, 2]-box[i][j, 0])
                 resized = torch.nn.functional.interpolate(instance_weight[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
