@@ -373,16 +373,16 @@ class Su20Zhang16Background(nn.Module):
         if freeze:
             for param in self.parameters():
                 param.requires_grad = False
-        self.fusion1 = Su20Fusion(64)
-        self.fusion2 = Su20Fusion(128)
-        self.fusion3 = Su20Fusion(256)
-        self.fusion4 = Su20Fusion(512)
-        self.fusion5 = Su20Fusion(512)
-        self.fusion6 = Su20Fusion(512)
-        self.fusion7 = Su20Fusion(512)
-        self.fusion8 = Su20Fusion(256)
         if init_weights:
             model_init(self)
+        self.fusion1 = Su20Fusion(64, init_weights=init_weights)
+        self.fusion2 = Su20Fusion(128, init_weights=init_weights)
+        self.fusion3 = Su20Fusion(256, init_weights=init_weights)
+        self.fusion4 = Su20Fusion(512, init_weights=init_weights)
+        self.fusion5 = Su20Fusion(512, init_weights=init_weights)
+        self.fusion6 = Su20Fusion(512, init_weights=init_weights)
+        self.fusion7 = Su20Fusion(512, init_weights=init_weights)
+        self.fusion8 = Su20Fusion(256, init_weights=init_weights)
         if weights: # allows incomplete state dict
             new_weights = self.state_dict()
             new_weights.update(torch.load(weights))
