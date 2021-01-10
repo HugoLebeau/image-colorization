@@ -155,7 +155,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         resize = transforms.Resize((64, 64))
         def criterion(output, target):
             prop = z2ab(output.cpu())
-            return smoothL1(prop, resize(target.cpu()))
+            return smoothL1(prop, resize(target.cpu())).sum()
     else:
         raise NameError(model_name)
     
@@ -172,7 +172,6 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
-        print(loss)
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         count_nan += 1
