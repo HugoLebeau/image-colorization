@@ -44,5 +44,6 @@ def smoothL1(prop, target, delta=1.):
 
     '''
     diff = torch.abs(prop-target)
-    pointwise_loss = torch.where(diff < delta, 0.5*torch.pow(diff, 2.), delta*(diff-0.5*delta))
+    # pointwise_loss = torch.where(diff < delta, 0.5*torch.pow(diff, 2.), delta*(diff-0.5*delta))
+    pointwise_loss = torch.where(diff < delta, 0.5*torch.abs(diff), delta*(diff-0.5*delta))
     return torch.sum(pointwise_loss, dim=(-1, -2, -3))
