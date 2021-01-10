@@ -153,14 +153,9 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
             print("Using CPU.")
         optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.99, 0.999), weight_decay=1e-3)
         resize = transforms.Resize((64, 64))
-        # def criterion(output, target):
-        #     prop = z2ab(output.cpu())
-        #     return smoothL1(prop, resize(target.cpu())).sum()
-        w = 1./(0.5*proba_ab+0.5/proba_ab.shape[0])
-        w /= (proba_ab*w).sum()
-        def criterion(prop, target):
-            z_target = ab2z(resize(target.cpu()))
-            return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
+        def criterion(output, target):
+            prop = z2ab(output.cpu())
+            return smoothL1(prop, resize(target.cpu())).sum()
     else:
         raise NameError(model_name)
     
