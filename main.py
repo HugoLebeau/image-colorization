@@ -172,6 +172,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
+        print(loss)
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
         count_nan += 1
