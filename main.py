@@ -119,7 +119,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         w /= (proba_ab*w).sum()
         resize = transforms.Resize((64, 64))
         def criterion(prop, target):
-            z_target = ab2z(resize(target.cpu()), k=5, sigma=5.)
+            z_target = ab2z(resize(target.cpu()))
             return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
     elif model_name == "Su20Instance":
         model = Su20Zhang16Instance(weights=weights)
@@ -138,7 +138,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
             loss, ok = 0., False
             for i, img in enumerate(target_instance):
                 if prop[i] is not None:
-                    z_target = ab2z(img, k=5, sigma=5.)
+                    z_target = ab2z(img)
                     loss += MCE(prop[i].cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).mean()
                     ok = True
             if not ok:
