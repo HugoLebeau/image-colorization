@@ -65,7 +65,7 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     return train_loader, val_loader, proba_ab
 
-def training(model_name, weights, lr, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False, max_nan=100):
+def training(model_name, weights, lr, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False, max_nan=20):
     '''
     Load a model and train it with the given data.
 
@@ -92,7 +92,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         Whether or not to use CUDA. The default is False.
     max_nan : int, optional
         Maximum number of consecutive NaN gradients before break. The default
-        is 100.
+        is 20.
 
     Raises
     ------
