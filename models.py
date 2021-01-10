@@ -296,14 +296,14 @@ class Su20Zhang16Instance(nn.Module):
                 x8 = self.conv8(x7)
                 z = self.softmax(self.conv_out(x8)) # a*b* probability distribution
                 z = z.transpose(-3, -2).transpose(-2, -1)
-            feature[0].append(x1)
-            feature[1].append(x2)
-            feature[2].append(x3)
-            feature[3].append(x4)
-            feature[4].append(x5)
-            feature[5].append(x6)
-            feature[6].append(x7)
-            feature[7].append(x8)
+            feature[0].append(x1.clone().detach())
+            feature[1].append(x2.clone().detach())
+            feature[2].append(x3.clone().detach())
+            feature[3].append(x4.clone().detach())
+            feature[4].append(x5.clone().detach())
+            feature[5].append(x6.clone().detach())
+            feature[6].append(x7.clone().detach())
+            feature[7].append(x8.clone().detach())
             color.append(z)
         if self.return_features:
             return feature, box
