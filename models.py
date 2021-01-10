@@ -264,6 +264,7 @@ class Su20Zhang16Instance(nn.Module):
         x = img_l/100. # normalize L* input (1/2)
         mask = maskRCNN(x)
         box = [m['boxes'][m['scores'] > self.min_score][:self.max_box].round().int() for m in mask]
+        box = [b[(b[:, 0] != b[:, 2]) & (b[:, 1] != b[:, 3])] for b in box] # remove empty boxes
         x -= 0.5 # normalize L* input (2/2)
         instance = extract(x, box, self.resize)
         feature = [list() for _ in range(8)]

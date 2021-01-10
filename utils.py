@@ -114,7 +114,6 @@ def zero_padding(background_weight, instance_weight, box):
     n, _, h, w = background_weight.shape
     weight_map = list()
     for i in range(n):
-        print(box[i])
         if box[i].shape[0] > 0:
             weight_map.append(list())
             for j in range(box[i].shape[0]):
