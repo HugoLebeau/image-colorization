@@ -65,7 +65,7 @@ def load_dataset(dataset_name, val_size, batch_size, max_size, n_threads, transf
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=n_threads)
     return train_loader, val_loader, proba_ab
 
-def training(model_name, weights, lr, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False):
+def training(model_name, weights, lr, train_loader, val_loader, val_size, val_step, proba_ab, use_cuda=False, max_nan=100):
     '''
     Load a model and train it with the given data.
 
@@ -90,6 +90,9 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         Distribution of a*b* visible values in the dataset.
     use_cuda : bool, optional
         Whether or not to use CUDA. The default is False.
+    max_nan : int, optional
+        Maximum number of consecutive NaN gradients before break. The default
+        is 100.
 
     Raises
     ------
@@ -159,6 +162,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
     n_ite = len(train_loader)
     df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss', 'optimizer step'], index=range(n_ite))
     before_val = val_step
+    count_nan = 0
     # TRAINING
     model.train()
     for ite, (data, target) in enumerate(tqdm(train_loader)):
@@ -168,13 +172,15 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
-        if np.isnan(loss.data.item()):
-            break
         loss.backward()
         df['training loss'][ite] = loss.data.item()/data.shape[0]
+        count_nan += 1
         if not np.any([torch.any(torch.isnan(param.grad)).item() for param in model.parameters()]): # if the gradients are not nan
+            count_nan = 0
             df['optimizer step'][ite] = True
             optimizer.step()
+        if count_nan >= max_nan:
+            break
         before_val -= data.shape[0]
         if before_val <= 0 or ite == n_ite-1: # VALIDATION
             before_val = val_step
