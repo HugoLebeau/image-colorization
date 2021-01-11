@@ -5,8 +5,8 @@ from torchvision import transforms
 from torchvision.models.detection import maskrcnn_resnet50_fpn
 
 maskRCNN = maskrcnn_resnet50_fpn(pretrained=True)
-# if torch.cuda.is_available():
-#     maskRCNN.cuda()
+if torch.cuda.is_available():
+    maskRCNN.cuda()
 for param in maskRCNN.parameters():
     param.requires_grad = False
 maskRCNN.eval()
@@ -452,4 +452,4 @@ class Collage(nn.Module):
     def forward(self, img_l):
         z_instance, box = self.instance_colorization(img_l)
         z_background = self.background_colorization(img_l)
-        return collage(z_background, z_instance, box, self.resize)
+        return collage(z_background.cpu(), [z.cpu() for z in z_instance], [b.cpu() for b in box], self.resize)
