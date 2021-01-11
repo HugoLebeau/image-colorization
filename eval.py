@@ -9,7 +9,7 @@ from tqdm import tqdm
 from skimage.metrics import normalized_root_mse, structural_similarity, peak_signal_noise_ratio
 
 from transforms import lab2rgb, data_transform
-from models import Zhang16, Su20
+from models import Zhang16, Su20, Collage
 from utils import z2ab
 from datasets.datasets import COCOStuff, Places205, SUN2012
 
@@ -82,10 +82,13 @@ def evaluation(model_name, weights, data_loader, use_cuda=False):
     if model_name == "Zhang16":
         model = Zhang16(weights=weights)
         resize = transforms.Resize((256, 256))
-        process_output = lambda output, data: lab2rgb(torch.cat((data.cpu(), resize(z2ab(output.cpu()))), axis=1))
+        process_output = lambda output, data: lab2rgb(torch.cat((data.cpu(), resize(z2ab(output.cpu()))), dim=1))
     elif model_name == "Su20":
         model = Su20(weights=weights)
-        process_output = lambda output, data: lab2rgb(torch.cat((data, output), axis=1).cpu())
+        process_output = lambda output, data: lab2rgb(torch.cat((data, output), dim=1).cpu())
+    elif model_name == "Collage":
+        model = Collage(weights=weights)
+        process_output = lambda output, data: lab2rgb(torch.cat((data, output), dim=1).cpu())
     else:
         raise NameError(model_name)
     if use_cuda:

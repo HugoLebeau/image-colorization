@@ -1,12 +1,12 @@
 import torch
 from torch import nn
-from utils import q, zero_padding, extract
+from utils import q, zero_padding, extract, collage
 from torchvision import transforms
 from torchvision.models.detection import maskrcnn_resnet50_fpn
 
 maskRCNN = maskrcnn_resnet50_fpn(pretrained=True)
-if torch.cuda.is_available():
-    maskRCNN.cuda()
+# if torch.cuda.is_available():
+#     maskRCNN.cuda()
 for param in maskRCNN.parameters():
     param.requires_grad = False
 maskRCNN.eval()
@@ -51,7 +51,7 @@ def model_init(model, mode='xavier'):
     model.apply(init_func)
 
 class Zhang16(nn.Module):
-    def __init__(self, q=q, weights=None, fine_tune=False, init_weights=True):
+    def __init__(self, q=q, weights=None, fine_tune=False, freeze=False, init_weights=True):
         super(Zhang16, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
@@ -133,6 +133,9 @@ class Zhang16(nn.Module):
                 param.requires_grad = False
             for param in self.conv_out.parameters():
                 param.requires_grad = True
+        if freeze:
+            for param in self.parameters():
+                param.requires_grad = False
     
     def forward(self, img_l):
         x = (img_l-50.)/100. # normalize L* input
@@ -413,14 +416,6 @@ class Su20Zhang16Background(nn.Module):
         x = self.fusion6(self.conv6(x), feature[5], box8)
         x = self.fusion7(self.conv7(x), feature[6], box8)
         x = self.fusion8(self.conv8(x), feature[7], box4)
-        # x = self.conv1(x)
-        # x = self.conv2(x)
-        # x = self.conv3(x)
-        # x = self.conv4(x)
-        # x = self.conv5(x)
-        # x = self.conv6(x)
-        # x = self.conv7(x)
-        # x = self.conv8(x)
         z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
@@ -440,3 +435,21 @@ class Su20(nn.Module):
         feature, box = self.instance_colorization(img_l)
         z = self.background_colorization(img_l, feature, box)
         return z
+
+class Collage(nn.Module):
+    def __init__(self, q=q, weights=None, init_weights=True):
+        super(Collage, self).__init__()
+        self.instance_colorization = Su20Zhang16Instance(q=q, return_features=False, freeze=True, init_weights=False)
+        self.background_colorization = Zhang16(q=q, freeze=True, init_weights=False)
+        self.resize = transforms.Resize((256, 256))
+        if init_weights:
+            model_init(self)
+        if weights: # allows incomplete state dict
+            new_weights = self.state_dict()
+            new_weights.update(torch.load(weights))
+            self.load_state_dict(new_weights)
+    
+    def forward(self, img_l):
+        z_instance, box = self.instance_colorization(img_l)
+        z_background = self.background_colorization(img_l)
+        return collage(z_background, z_instance, box, self.resize)

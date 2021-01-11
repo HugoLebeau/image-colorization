@@ -159,3 +159,32 @@ def extract(image, box, resize):
         else:
             instance.append(None)
     return instance
+
+def collage(z_background, z_instance, box, resize):
+    '''
+    Performs a collage of instances in the background.
+
+    Parameters
+    ----------
+    z_background : torch.Tensor, shape (N, H, W, Q)
+        a*b* distribution of the background.
+    z_instance : list[N] of torch.Tensor, shape (B[i], H, W, Q)
+        a*b* distributions of the instances.
+    box : list[N] of torch.Tensor, shape (B[i], 4)
+        Boxes of the instances.
+    resize : callable
+        Function that resizes to an output size.
+
+    Returns
+    -------
+    img_ab : torch.Tensor, shape (N, 2, H, W)
+        a*b* image made from the background and the instances.
+
+    '''
+    img_ab = resize(z2ab(z_background))
+    for i, z in enumerate(z_instance):
+        ab = z2ab(z)
+        if box[i].shape[0] > 0:
+            for j, (x1, y1, x2, y2) in enumerate(box[i]):
+                img_ab[i, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(ab[j].unsqueeze(dim=0), size=(y2-y1, x2-x1), mode='bilinear', align_corners=False)
+    return img_ab
