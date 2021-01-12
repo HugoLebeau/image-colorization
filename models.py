@@ -190,7 +190,7 @@ class Su20Fusion(nn.Module):
         return fused
 
 class Su20Zhang16Instance(nn.Module):
-    def __init__(self, q=q, return_features=False, min_score=0.5, max_box=8, weights=None, freeze=False, init_weights=True):
+    def __init__(self, q=q, return_features=False, min_score=0.5, max_box=8, weights=None, fine_tune=False, freeze=False, init_weights=True):
         super(Su20Zhang16Instance, self).__init__()
         self.return_features = return_features
         self.min_score = min_score
@@ -271,6 +271,11 @@ class Su20Zhang16Instance(nn.Module):
             new_weights = self.state_dict()
             new_weights.update(torch.load(weights))
             self.load_state_dict(new_weights)
+        if fine_tune:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.conv_out.parameters():
+                param.requires_grad = True
         if freeze:
             for param in self.parameters():
                 param.requires_grad = False

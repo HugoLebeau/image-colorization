@@ -122,7 +122,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
             z_target = ab2z(resize(target.cpu()))
             return MCE(prop.cpu(), z_target, weights=w[z_target.argmax(dim=-1)]).sum()
     elif model_name == "Su20Instance":
-        model = Su20Zhang16Instance(weights=weights)
+        model = Su20Zhang16Instance(weights=weights, fine_tune=True)
         if use_cuda:
             print("Using GPU.")
             model.cuda()
