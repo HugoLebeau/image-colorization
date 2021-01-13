@@ -457,4 +457,4 @@ class Collage(nn.Module):
     def forward(self, img_l):
         z_instance, box = self.instance_colorization(img_l)
         z_background = self.background_colorization(img_l)
-        return collage(z_background.cpu(), [z.cpu() for z in z_instance], [b.cpu() for b in box], self.resize)
+        return collage(z_background.cpu(), [z.cpu() for z in z_instance], [b.cpu() for b in box], self.resize).to(img_l.device)
