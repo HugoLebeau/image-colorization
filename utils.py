@@ -183,8 +183,8 @@ def collage(z_background, z_instance, box, resize):
     '''
     img_ab = resize(z2ab(z_background))
     for i, z in enumerate(z_instance):
-        ab = z2ab(z)
-        if box[i].shape[0] > 0:
+        if z is not None:
+            ab = z2ab(z)
             for j, (x1, y1, x2, y2) in enumerate(box[i]):
                 img_ab[i, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(ab[j].unsqueeze(dim=0), size=(y2-y1, x2-x1), mode='bilinear', align_corners=False)
     return img_ab
