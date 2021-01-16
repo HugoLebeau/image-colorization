@@ -44,7 +44,7 @@ def ab2z(img_ab, k=5, sigma=5., algorithm='ball_tree'):
     z = z.reshape((n, h, w, q))
     return z
 
-def z2ab(z, temp=0.38):
+def z2ab(z, temp=0.38, eps=1e-42):
     '''
     Map from class probabilities to point estimates in a*b* space with an
     annealed-mean.
@@ -55,6 +55,9 @@ def z2ab(z, temp=0.38):
         Class probabilities.
     temp : float, optional
         Temperature in ]0, 1]. The default is 0.38.
+    eps : float, optional
+        Small value added before computing the log to avoid NaNs. The default
+        is 1e-42.
 
     Returns
     -------
@@ -63,7 +66,7 @@ def z2ab(z, temp=0.38):
 
     '''
     n, h, w, _ = z.shape
-    temp_z = torch.exp(torch.log(z)/temp)
+    temp_z = torch.exp(torch.log(z+eps)/temp)
     ft_z = (temp_z.permute(3, 0, 1, 2)/torch.sum(temp_z, axis=-1)).permute(1, 2, 3, 0)
     prod_a = ft_z*visible_ab[:, 0]
     prod_b = ft_z*visible_ab[:, 1]
