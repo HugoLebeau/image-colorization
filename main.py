@@ -161,7 +161,7 @@ def training(model_name, weights, lr, train_loader, val_loader, val_size, val_st
     
     n_ite = len(train_loader)
     df = pd.DataFrame(columns=['lr', 'training loss', 'validation loss', 'optimizer step'], index=range(n_ite))
-    before_val = val_step
+    before_val = 0
     count_nan = 0
     # TRAINING
     model.train()
