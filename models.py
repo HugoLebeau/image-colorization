@@ -420,7 +420,8 @@ class Su20Zhang16Background(nn.Module):
         x = self.fusion5(self.conv5(x), feature[4], box8)
         x = self.fusion6(self.conv6(x), feature[5], box8)
         x = self.fusion7(self.conv7(x), feature[6], box8)
-        x = self.fusion8(self.conv8(x), feature[7], box4)
+        # x = self.fusion8(self.conv8(x), feature[7], box4)
+        x = self.conv8(x)
         z = self.softmax(self.conv_out(x)) # a*b* probability distribution
         return z.transpose(-3, -2).transpose(-2, -1)
 
