@@ -138,6 +138,7 @@ def zero_padding(background, instance, instance_weight, box):
             instance_padded[i] = torch.cat(instance_padded[i])
             weight_map[i] = torch.cat(weight_map[i])
         else:
+            instance_padded.append(None)
             weight_map.append(None)
     return instance_padded, weight_map
 
