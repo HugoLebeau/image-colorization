@@ -94,14 +94,17 @@ def logdistrib_smoothed(logdistrib, sigma=5.):
     logkernel = -0.5*dmat**2/sigma**2
     return torch.logsumexp(logdistrib+logkernel, dim=1)-torch.logsumexp(logkernel, dim=1)
 
-def zero_padding(background_weight, instance_weight, box):
+def zero_padding(background, instance, instance_weight, box):
     '''
-    Resize instances and do zero-padding to fit them in the background.
+    Resize instances and weights and do zero-padding to fit them in the
+    background.
 
     Parameters
     ----------
-    background_weight : torch.Tensor, shape (N, C, H, W)
-        Background weights.
+    background : torch.Tensor, shape (N, C, H, W)
+        Full-image.
+    instance_weight : list[N] of torch.Tensor, shape (B[i], C, H, W)
+        For each image, features of each instance.
     instance_weight : list[N] of torch.Tensor, shape (B[i], C, H, W)
         For each image, weights of each instance.
     box : list[N] of torch.Tensor, shape (B[i], 4)
@@ -109,27 +112,34 @@ def zero_padding(background_weight, instance_weight, box):
 
     Returns
     -------
+    instance_padded : list[N] of torch.Tensor, shape (B[i], C, H, W)
+        For each image, the features of the instances resized to their place in
+        the background with zero-padding elsewhere.
     weight_map : list[N] of torch.Tensor, shape (B[i], C, H, W)
         For each image, the weights of the instances resized to their place in
         the background with zero-padding elsewhere.
 
     '''
-    n, _, h, w = background_weight.shape
-    weight_map = list()
+    n, _, h, w = background.shape
+    instance_padded, weight_map = list(), list()
     for i in range(n):
         if box[i].shape[0] > 0:
+            instance_padded.append(list())
             weight_map.append(list())
             for j in range(box[i].shape[0]):
-                # Resize every instance weights to their scale in the background
+                # Resize every instance to their scale in the background
                 size = (box[i][j, 3]-box[i][j, 1], box[i][j, 2]-box[i][j, 0])
-                resized = torch.nn.functional.interpolate(instance_weight[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
+                resized_weight = torch.nn.functional.interpolate(instance_weight[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
+                resized_instance = torch.nn.functional.interpolate(instance[i][j].unsqueeze(dim=0), size=size, mode='bilinear', align_corners=False)
                 # Pad with zeros
-                pad = (box[i][j, 0], w-box[i][j, 0]-resized.shape[-1], box[i][j, 3]-resized.shape[-2], h-box[i][j, 3])
-                weight_map[i].append(torch.nn.functional.pad(resized, pad, "constant", 0))
+                pad = (box[i][j, 0], w-box[i][j, 0]-size[1], box[i][j, 3]-size[0], h-box[i][j, 3])
+                instance_padded[i].append(torch.nn.functional.pad(resized_instance, pad, "constant", 0))
+                weight_map[i].append(torch.nn.functional.pad(resized_weight, pad, "constant", 0))
+            instance_padded[i] = torch.cat(instance_padded[i])
             weight_map[i] = torch.cat(weight_map[i])
         else:
             weight_map.append(None)
-    return weight_map
+    return instance_padded, weight_map
 
 def extract(image, box, resize):
     '''

@@ -180,13 +180,13 @@ class Su20Fusion(nn.Module):
     def forward(self, background, instance, box):
         background_weight = self.background_conv(background)
         instance_weight = [self.instance_conv(i) if i is not None else None for i in instance]
-        weight_map = zero_padding(background_weight, instance_weight, box)
+        instance_padded, weight_map = zero_padding(background, instance, instance_weight, box)
         fused = self.softmax(background_weight)*background
         for n in range(fused.shape[0]):
-            if instance[n] is None:
+            if instance_padded[n] is None:
                 fused[n] = background[n]
             else:
-                fused[n] += torch.sum(self.softmax(weight_map[n])*instance[n], dim=0)
+                fused[n] += torch.sum(self.softmax(weight_map[n])*instance_padded[n], dim=0)
         return fused
 
 class Su20Zhang16Instance(nn.Module):
