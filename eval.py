@@ -85,6 +85,7 @@ def evaluation(model_name, weights, data_loader, use_cuda=False):
         process_output = lambda output, data: lab2rgb(torch.cat((data.cpu(), resize(z2ab(output.cpu()))), dim=1))
     elif model_name == "Su20":
         model = Su20(weights=weights)
+        resize = transforms.Resize((256, 256))
         process_output = lambda output, data: lab2rgb(torch.cat((data.cpu(), resize(z2ab(output.cpu()))), dim=1))
     elif model_name == "Collage":
         model = Collage(weights=weights)
