@@ -103,7 +103,7 @@ def zero_padding(background, instance, instance_weight, box):
     ----------
     background : torch.Tensor, shape (N, C, H, W)
         Full-image.
-    instance_weight : list[N] of torch.Tensor, shape (B[i], C, H, W)
+    instance : list[N] of torch.Tensor, shape (B[i], C, H, W)
         For each image, features of each instance.
     instance_weight : list[N] of torch.Tensor, shape (B[i], C, H, W)
         For each image, weights of each instance.
@@ -176,7 +176,7 @@ def extract(image, box, resize):
 
 def collage(z_background, z_instance, box, resize):
     '''
-    Performs a collage of instances in the background.
+    Perform a collage of instances in the background.
 
     Parameters
     ----------
