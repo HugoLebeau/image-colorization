@@ -4,7 +4,7 @@ This is a from scratch implementation of two CNN-based automatic image colorizat
  * Zhang *et al.* (2016)
  * Su *et al.* (2020)
 
-The first model is used as colorization module in the second model (Su *et al.* use a slightly different architecture) but works as it is presented in their work (in particular, the fusion module is the same).
+The first model is used as colorization module in the second model (Su *et al.* use a slightly different architecture) but it works as it is presented in their work (in particular, the fusion module is the same).
 
 References:
  * Richard Zhang, Phillip Isola, and Alexei A Efros. Colorful image colorization. In European conference on computer vision, pages 649–666. Springer, 2016.
